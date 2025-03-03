@@ -19,7 +19,7 @@ def generate_patient_data(n=1000, seed=42):
     weight = np.random.normal(70, 10, n)  # Weight in kg
     
     df = pd.DataFrame({
-        'ID': range(1, n + 1),  # Adding an ID column starting from 1
+        'ID': range(1, n + 1),
         'Age': age,
         'BloodPressure': blood_pressure,
         'Cholesterol': cholesterol,
@@ -65,7 +65,7 @@ def mar(df, target_column, predictor_column, base_missing_rate=0.05, max_missing
     min_predictor, max_predictor = df[predictor_column].min(), df[predictor_column].max()
     normalized_predictor = (df[predictor_column] - min_predictor) / (max_predictor - min_predictor)
 
-    # Missing probability with added noise
+    # Missing probability with noise
     missing_prob = base_missing_rate + (max_missing_rate - base_missing_rate) * normalized_predictor
     missing_prob += np.random.normal(0, noise_level, len(df))  
     missing_prob = np.clip(missing_prob, 0, 1)  # Probabilities stay within [0,1]
@@ -86,8 +86,8 @@ def mar(df, target_column, predictor_column, base_missing_rate=0.05, max_missing
     plt.figure(figsize=(10, 6))
     plt.scatter(df_mar[predictor_column], missing_prob)
     sns.regplot(x=df_mar[predictor_column], y=missing_prob, lowess=True, scatter=False, color='red')
-    plt.xlabel(f'{predictor_column}')  # Ensure correct x-label
-    plt.ylabel(f'Probability of missing {target_column}')  # Correct y-label
+    plt.xlabel(f'{predictor_column}')  
+    plt.ylabel(f'Probability of missing {target_column}')
     plt.title(f'MAR: Probability of missingness influenced by {predictor_column}')
     plt.ylim(0, 1)
     plt.show()
@@ -111,14 +111,14 @@ def mnar(df, target_column, base_missing_rate=0.05, max_missing_rate=0.3, noise_
     np.random.seed(seed)
     df_mnar = df.copy()
     
-    # Store the original values of the target column before introducing missingness
+    # Store the original values of the target column
     df_mnar[f'Original_{target_column}'] = df_mnar[target_column]
 
     # Normalize the target column between 0 and 1
     min_target, max_target = df[target_column].min(), df[target_column].max()
     normalized_target = (df[target_column] - min_target) / (max_target - min_target)
 
-    # Missing probability with added noise
+    # Missing probability with noise
     missing_prob = base_missing_rate + (max_missing_rate - base_missing_rate) * normalized_target
     missing_prob += np.random.normal(0, noise_level, len(df))  
     missing_prob = np.clip(missing_prob, 0, 1)  # Probabilities stay within [0,1]
@@ -138,8 +138,8 @@ def mnar(df, target_column, base_missing_rate=0.05, max_missing_rate=0.3, noise_
     plt.figure(figsize=(10, 6))
     plt.scatter(df_mnar[target_column], missing_prob)
     sns.regplot(x=df_mnar[target_column], y=missing_prob, lowess=True, scatter=False, color='red')
-    plt.xlabel(f'{target_column}')  # Ensure correct x-label
-    plt.ylabel(f'Probability of missing {target_column}')  # Correct y-label
+    plt.xlabel(f'{target_column}')
+    plt.ylabel(f'Probability of missing {target_column}')
     plt.title(f'MNAR: Probability of missingness influenced by {target_column}')
     plt.ylim(0, 1)
     plt.show()
@@ -147,12 +147,12 @@ def mnar(df, target_column, base_missing_rate=0.05, max_missing_rate=0.3, noise_
     # Second plot
     plt.figure(figsize=(10, 6))
     
-    # Plot non-missing values in blue
+    # Plot non-missing values
     plt.scatter(df_mnar['ID'][~df_mnar[target_column].isna()], 
                 df_mnar[target_column][~df_mnar[target_column].isna()], 
                 c='blue', label='Non-missing', edgecolor='k')
     
-    # Plot missing values in red using their original values
+    # Plot missing values using original values
     plt.scatter(df_mnar['ID'][df_mnar[target_column].isna()], 
                 df_mnar[f'Original_{target_column}'][df_mnar[target_column].isna()], 
                 c='red', label='Missing', edgecolor='k')

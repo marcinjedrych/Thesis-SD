@@ -1,6 +1,5 @@
 import pandas as pd
 from sdv.single_table import CTGANSynthesizer
-import matplotlib.pyplot as plt
 
 # Replace with your actual file path
 file_path = r'C:\Users\Marcin\Desktop\healthcare_dataset.csv'
@@ -40,7 +39,7 @@ from sdv.metadata import SingleTableMetadata
 # Convert metadata dictionary to SingleTableMetadata object
 metadata_obj = SingleTableMetadata.load_from_dict(metadata)
 
-# Initialize the synthesizer with the corrected metadata object
+# Initialize the synthesizer with the metadata object
 synthesizer = CTGANSynthesizer(metadata_obj)
 
 # Fit the synthesizer
@@ -48,6 +47,4 @@ synthesizer.fit(real)
 
 # Generate synthetic data
 syn = synthesizer.sample(num_rows=len(real))
-
-# View the generated data
 print(syn.head())
