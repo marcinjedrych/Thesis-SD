@@ -10,10 +10,11 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy.special import expit 
 
-def generate_patient_data(n=1000, seed=42):
+def generate_patient_data(n=5000, seed=42):
     np.random.seed(seed)
-    age = np.random.normal(50, 15, n).astype(int)  # Age in years
+    age = np.random.normal(40, 15, n).astype(int)  # Age in years
     blood_pressure = np.random.normal(120, 15, n)  # Systolic blood pressure
     cholesterol = np.random.normal(200, 30, n)  # Cholesterol level
     weight = np.random.normal(70, 10, n)  # Weight in kg
@@ -38,66 +39,127 @@ data = generate_patient_data()
 
 ## MISSING COMPLETELY AT RANDOM
 
-def mcar(df, column, missing_rate=0.1, seed=42):
-    
-    print('\n _____________________________________________ \n')
-    print("      MISSING COMPLETELY AT RANDOM")
-    
-    print(f'\n Target column: {column}')
-    print('\n _____________________________________________ \n')
+def mcar(df, target_column, missing_rate=0.2, seed=42):
     
     np.random.seed(seed)
     df_mcar = df.copy()
-    mask = np.random.rand(df.shape[0]) < missing_rate  
-    df_mcar.loc[mask, column] = np.nan 
+    
+    # Create missing values randomly
+    mask = np.random.binomial(1, missing_rate, size=len(df)).astype(bool)
+    df_mcar.loc[mask, target_column] = np.nan
+    
+    missingpr = (df_mcar[target_column].isna().sum() / len(df_mcar[target_column])) *100
+    print('\n _____________________________________________ \n')
+    print("      MISSING COMPLETELY AT RANDOM (MCAR)")
+    print(f'\nTarget column: {target_column}')
+    print(f'Target missing rate: {missing_rate}')
+    print(f'\n Actual missing: {missingpr:.2f}')
+    print('\n _____________________________________________ \n')
+    
+    df_mcar['missing'] = df_mcar[target_column].isna()
+
+    # Violin plot - age
+    plt.figure(figsize=(8, 6))
+    sns.violinplot(x=df_mcar['missing'], y=df_mcar['Age'], inner="quart")
+    plt.xticks([0, 1], ['Observed', 'Missing'])
+    plt.xlabel(f'{target_column} Missingness')
+    plt.ylabel('Age')
+    plt.title('MCAR Violin plot')
+    plt.show()
+
     return df_mcar
 
-data_mcar = mcar(data, 'Cholesterol')
+data_mcar = mcar(data, target_column='Cholesterol')
 plot_missingness(data_mcar, "MCAR Missingness Pattern")
 
-## MISSING AT RANDOM
+## BETA 0
 
-def mar(df, target_column, predictor_column, base_missing_rate=0.05, max_missing_rate=0.3, noise_level=0.1, seed=42):
+#calculate analytically -> to much missingness (more then target)
+# def find_beta_0(df, predictor_column, target_missing_rate, beta_1):
+
+#     x_values = df[predictor_column].values
+#     beta_0_vector = np.log(target_missing_rate / (1 - target_missing_rate)) - beta_1 * x_values
+#     beta_0 = np.mean(beta_0_vector) #not good
+    
+#     return beta_0
+
+# Find the optimal beta_0
+
+def find_beta_0(df, predictor_column, target_missing_rate, beta_1):
+    
+    beta_0 = 0  # initial guess
+    step_size = 0.01  # Stepsize
+    tolerance = 0.001  # Allowable difference
+    
+    while True:
+        
+        # Calculate missingness probability
+        logit_prob = beta_0 + beta_1 * df[predictor_column]
+        missing_prob = expit(logit_prob)
+        
+        # Simulate
+        mask = np.random.rand(len(df)) < missing_prob
+        actual_missing_rate = mask.sum() / len(df)
+        
+        # Check if the missing rate is close to the target
+        if abs(actual_missing_rate - target_missing_rate) < tolerance:
+            break
+        
+        # Adjust beta_0 based on the difference between the actual and target missing rate
+        if actual_missing_rate < target_missing_rate:
+            beta_0 += step_size  # Increase beta_0
+        else:
+            beta_0 -= step_size  # Decrease beta_0
+    
+    return beta_0
+
+## MISSING AT RANDOM (MAR) 
+
+def mar(df, target_column, predictor_column, target_missing_rate=0.2, beta_1=0.2, seed=42):
     np.random.seed(seed)
     df_mar = df.copy()
-
-    # Normalize the predictor column between 0 and 1
-    min_predictor, max_predictor = df[predictor_column].min(), df[predictor_column].max()
-    normalized_predictor = (df[predictor_column] - min_predictor) / (max_predictor - min_predictor)
-
-    # Missing probability with noise
-    missing_prob = base_missing_rate + (max_missing_rate - base_missing_rate) * normalized_predictor
-    missing_prob += np.random.normal(0, noise_level, len(df))  
-    missing_prob = np.clip(missing_prob, 0, 1)  # Probabilities stay within [0,1]
-
-    # For each row, if the random number is smaller than the calculated probability, set the target column to NaN
+    
+    # get beta_0 
+    beta_0 = find_beta_0(df, predictor_column, target_missing_rate, beta_1)
+    
+    # get missing probability
+    logit_prob = beta_0 + beta_1 * df[predictor_column]
+    missing_prob = expit(logit_prob)  # Apply sigmoid function
+    
+    # Create missing values based on probability
     mask = np.random.rand(len(df)) < missing_prob
     df_mar.loc[mask, target_column] = np.nan
     
+    missingpr = (df_mar[target_column].isna().sum() / len(df_mar[target_column])) *100
     print('\n _____________________________________________ \n')
-    print("      MISSING AT RANDOM")
-    
+    print("      MISSING AT RANDOM (LOGISTIC MODEL)")
     print(f'\n Predictor column: {predictor_column}')
-    print(f'\n Target column: {target_column}')
+    print(f' Target column: {target_column}')
+    print(f' Target missing rate: {target_missing_rate}')
+    print(f' Beta_1: {beta_1}')
+    
+    print(f'\n Computed beta_0: {beta_0:.2f}')
+    print(f' Actual missing: {missingpr:.2f} %')
     print('\n _____________________________________________ \n')
     
-
-    # First plot 
+    # Plot missingness probability function
     plt.figure(figsize=(10, 6))
-    plt.scatter(df_mar[predictor_column], missing_prob)
-    sns.regplot(x=df_mar[predictor_column], y=missing_prob, lowess=True, scatter=False, color='red')
+    plt.scatter(df_mar[predictor_column], missing_prob, alpha=0.5)
+    sns.regplot(x=df_mar[predictor_column], y=missing_prob, logistic=True, scatter=False, color='red')
     plt.xlabel(f'{predictor_column}')  
     plt.ylabel(f'Probability of missing {target_column}')
-    plt.title(f'MAR: Probability of missingness influenced by {predictor_column}')
+    plt.title(f'MAR (Logistic): Probability of missingness by {predictor_column}')
     plt.ylim(0, 1)
     plt.show()
-
-    # Second plot
-    plt.figure(figsize=(10, 6))
-    plt.scatter(df_mar['ID'], df_mar[predictor_column], c=df_mar[target_column].isna(), cmap='coolwarm', edgecolor='k')
-    plt.xlabel('ID')
-    plt.ylabel(f'{predictor_column}')
-    plt.title(f'{predictor_column} vs. ID with missing data indicated in red')
+    
+    # Violin plot 
+    df_mar['missing'] = df_mar[target_column].isna()
+    plt.figure(figsize=(8, 6))
+    sns.violinplot(x=df_mar['missing'], y=df_mar['Age'], inner="quart")
+    plt.xticks([0, 1], ['Observed', 'Missing'])
+    plt.xlabel(f'{target_column} Missingness')
+    plt.ylabel('Age')
+    plt.title('MAR Violin plot')
     plt.show()
     
     return df_mar
@@ -105,67 +167,56 @@ def mar(df, target_column, predictor_column, base_missing_rate=0.05, max_missing
 data_mar = mar(data, target_column='Cholesterol', predictor_column='Age')
 plot_missingness(data_mar, "MAR Missingness Pattern")
 
-## MISSING NOT AT RANDOM
+# MISSINGNESS NOT AT RANDOM
 
-def mnar(df, target_column, base_missing_rate=0.05, max_missing_rate=0.3, noise_level=0.02, seed=42):
+def mnar(df, target_column, target_missing_rate=0.2, beta_1=0.2, seed=42):
     np.random.seed(seed)
     df_mnar = df.copy()
     
-    # Store the original values of the target column
-    df_mnar[f'Original_{target_column}'] = df_mnar[target_column]
-
-    # Normalize the target column between 0 and 1
-    min_target, max_target = df[target_column].min(), df[target_column].max()
-    normalized_target = (df[target_column] - min_target) / (max_target - min_target)
-
-    # Missing probability with noise
-    missing_prob = base_missing_rate + (max_missing_rate - base_missing_rate) * normalized_target
-    missing_prob += np.random.normal(0, noise_level, len(df))  
-    missing_prob = np.clip(missing_prob, 0, 1)  # Probabilities stay within [0,1]
-
-    # For each row, if the random number is smaller than the calculated probability, set the target column to NaN
+    # get beta_0 
+    beta_0 = find_beta_0(df, target_column, target_missing_rate, beta_1)
+    
+    # get missing probability
+    logit_prob = beta_0 + beta_1 * df[target_column]
+    missing_prob = expit(logit_prob)  # Apply sigmoid function
+    
+    # Create missing values based on probability
     mask = np.random.rand(len(df)) < missing_prob
     df_mnar.loc[mask, target_column] = np.nan
     
+    missingpr = (df_mnar[target_column].isna().sum() / len(df_mnar[target_column])) * 100
     print('\n _____________________________________________ \n')
-    print("      MISSING NOT AT RANDOM")
-    
-    print(f'\n Predictor column: {target_column}')
+    print("      MISSING NOT AT RANDOM (LOGISTIC MODEL)")
     print(f'\n Target column: {target_column}')
+    print(f' Target missing rate: {target_missing_rate}')
+    print(f' Beta_1: {beta_1}')
+    
+    print(f'\n Computed beta_0: {beta_0:.2f}')
+    print(f' Actual missing: {missingpr:.2f} %')
     print('\n _____________________________________________ \n')
-      
-    # First plot 
+    
+    # Plot missingness probability function
     plt.figure(figsize=(10, 6))
-    plt.scatter(df_mnar[target_column], missing_prob)
-    sns.regplot(x=df_mnar[target_column], y=missing_prob, lowess=True, scatter=False, color='red')
-    plt.xlabel(f'{target_column}')
+    plt.scatter(df_mnar[target_column], missing_prob, alpha=0.5)
+    sns.regplot(x=df_mnar[target_column], y=missing_prob, logistic=True, scatter=False, color='red')
+    plt.xlabel(f'{target_column}')  
     plt.ylabel(f'Probability of missing {target_column}')
-    plt.title(f'MNAR: Probability of missingness influenced by {target_column}')
+    plt.title(f'MNAR (Logistic): Probability of missingness by {target_column}')
     plt.ylim(0, 1)
     plt.show()
-
-    # Second plot
-    plt.figure(figsize=(10, 6))
     
-    # Plot non-missing values
-    plt.scatter(df_mnar['ID'][~df_mnar[target_column].isna()], 
-                df_mnar[target_column][~df_mnar[target_column].isna()], 
-                c='blue', label='Non-missing', edgecolor='k')
-    
-    # Plot missing values using original values
-    plt.scatter(df_mnar['ID'][df_mnar[target_column].isna()], 
-                df_mnar[f'Original_{target_column}'][df_mnar[target_column].isna()], 
-                c='red', label='Missing', edgecolor='k')
-    
-    plt.xlabel('ID')
+    # Violin plot 
+    df_mnar['missing'] = df_mnar[target_column].isna()
+    plt.figure(figsize=(8, 6))
+    sns.violinplot(x=df_mnar['missing'], y=df[target_column], inner="quart") #use old df for y axis! (before missingness)
+    plt.xticks([0, 1], ['Observed', 'Missing'])
+    plt.xlabel(f'{target_column} Missingness')
     plt.ylabel(f'{target_column}')
-    plt.title(f'{target_column} vs. ID with missing data indicated in red')
-    plt.legend()
+    plt.title('MNAR Violin plot')
     plt.show()
     
     return df_mnar
 
 data_mnar = mnar(data, target_column='Cholesterol')
 plot_missingness(data_mnar, "MNAR Missingness Pattern")
-
 
