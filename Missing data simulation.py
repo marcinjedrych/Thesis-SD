@@ -76,15 +76,15 @@ plot_missingness(data_mcar, "MCAR Missingness Pattern")
 
 #calculate analytically -> to much missingness (more then target)
 # def find_beta_0(df, predictor_column, target_missing_rate, beta_1):
-
-#     x_values = df[predictor_column].values
-#     beta_0_vector = np.log(target_missing_rate / (1 - target_missing_rate)) - beta_1 * x_values
-#     beta_0 = np.mean(beta_0_vector) #not good
+    
+#     # logistic inverse
+#     logit_target_missing_rate = np.log((1 - target_missing_rate) / target_missing_rate)
+    
+#     beta_0 = -beta_1 * np.mean(df[predictor_column]) - logit_target_missing_rate
     
 #     return beta_0
 
-# Find the optimal beta_0
-
+#find optimal beta0
 def find_beta_0(df, predictor_column, target_missing_rate, beta_1):
     
     beta_0 = 0  # initial guess
