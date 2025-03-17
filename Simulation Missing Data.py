@@ -12,21 +12,70 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.special import expit 
 
-def generate_patient_data(n=5000, seed=42):
-    np.random.seed(seed)
-    age = np.random.normal(40, 15, n).astype(int)  # Age in years
-    blood_pressure = np.random.normal(120, 15, n)  # Systolic blood pressure
-    cholesterol = np.random.normal(200, 30, n)  # Cholesterol level
-    weight = np.random.normal(70, 10, n)  # Weight in kg
+def generate_patient_data(nsamples=10000, seed=123):
+    np.random.seed(seed)  # Set seed for reproducibility
     
-    df = pd.DataFrame({
-        'ID': range(1, n + 1),
-        'Age': age,
-        'BloodPressure': blood_pressure,
-        'Cholesterol': cholesterol,
-        'Weight': weight
-    })
-    return df
+    # Generate Age and Weight
+    age = np.random.normal(loc=50, scale=10, size=nsamples)
+    weight = np.random.normal(loc=70, scale=15, size=nsamples)  # New predictor
+    
+    # Disease Stage (Ordinal, affected by Age)
+    stage_tags = ['I', 'II', 'III', 'IV']
+    stage_intercepts = [2, 3, 4]  # Thresholds for stages
+    stage_beta_age = -0.1  # Older individuals less likely in higher stages
+    
+    stage_logodds = np.array(stage_intercepts).reshape(len(stage_intercepts),1) + np.vstack([stage_beta_age * age] * len(stage_intercepts))
+    stage_cumprob = expit(stage_logodds)
+    stage_probs = np.hstack([stage_cumprob[0].reshape(-1,1), 
+                              stage_cumprob[1].reshape(-1,1) - stage_cumprob[0].reshape(-1,1), 
+                              stage_cumprob[2].reshape(-1,1) - stage_cumprob[1].reshape(-1,1),
+                              1 - stage_cumprob[2].reshape(-1,1)])
+    
+    stage = np.array([np.random.choice(stage_tags, p=prob) for prob in stage_probs])
+    
+    # Therapy (Binary, Random)
+    therapy = np.random.choice([False, True], size=nsamples, p=[0.5, 0.5])
+    
+    # Blood Pressure (BP) influenced by Stage, Therapy, and Weight
+    bp_intercept = 120
+    bp_beta_stage = [0, 10, 20, 30]  # Increasing severity increases BP
+    bp_beta_therapy = -20  # Therapy lowers BP
+    bp_beta_weight = 0.5  # Higher weight increases BP
+    
+    stage_to_bp_beta = dict(zip(stage_tags, bp_beta_stage))
+    bp_betas = bp_intercept + np.array([stage_to_bp_beta[s] for s in stage]) + bp_beta_therapy * therapy + bp_beta_weight * weight
+    
+    bp = np.random.normal(loc=bp_betas, scale=10, size=nsamples)
+    
+    # Create DataFrame
+    data = pd.DataFrame({'age': age, 'weight': weight, 'stage': stage, 'therapy': therapy, 'bp': bp})
+    return data
+
+
+def plot_relationships(data):
+    sns.set(style="whitegrid")
+    
+    # Effect of Age on Disease Stage (Violin Plot)
+    plt.figure(figsize=(6, 5))
+    sns.violinplot(x='stage', y='age', data=data, order=['I', 'II', 'III', 'IV'])
+    plt.title("Effect of Age on Disease Stage")
+    plt.show()
+    
+    # Effect of Weight on Bloodpressure (scatterplot with loess)
+    sns.regplot(x='weight', y='bp', data=data, lowess=True, scatter_kws={'alpha':0.5})
+    plt.title("Effect of Weight on Blood Pressure")
+    plt.show()
+    
+    # Barplots for categorical variables
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    sns.barplot(x='stage', y='bp', data=data, ax=axes[0], order=['I', 'II', 'III', 'IV'])
+    axes[0].set_title("Effect of Disease Stage on Blood Pressure")
+    sns.barplot(x='therapy', y='bp', data=data, ax=axes[1])
+    axes[1].set_title("Effect of Therapy on Blood Pressure")
+    plt.show()
+
+data = generate_patient_data(500)
+plot_relationships(data)
 
 def plot_missingness(df, title):
     plt.figure(figsize=(8, 6))
@@ -60,7 +109,7 @@ def mcar(df, target_column, missing_rate=0.2, seed=42):
 
     # Violin plot - age
     plt.figure(figsize=(8, 6))
-    sns.violinplot(x=df_mcar['missing'], y=df_mcar['Age'], inner="quart")
+    sns.violinplot(x=df_mcar['missing'], y=df_mcar['age'], inner="quart")
     plt.xticks([0, 1], ['Observed', 'Missing'])
     plt.xlabel(f'{target_column} Missingness')
     plt.ylabel('Age')
@@ -69,20 +118,9 @@ def mcar(df, target_column, missing_rate=0.2, seed=42):
 
     return df_mcar
 
-data_mcar = mcar(data, target_column='Cholesterol')
+data_mcar = mcar(data, target_column='bp')
 plot_missingness(data_mcar, "MCAR Missingness Pattern")
 
-## BETA 0
-
-#calculate analytically -> to much missingness (more then target)
-# def find_beta_0(df, predictor_column, target_missing_rate, beta_1):
-    
-#     # logistic inverse
-#     logit_target_missing_rate = np.log((1 - target_missing_rate) / target_missing_rate)
-    
-#     beta_0 = -beta_1 * np.mean(df[predictor_column]) - logit_target_missing_rate
-    
-#     return beta_0
 
 #find optimal beta0
 def find_beta_0(df, predictor_column, target_missing_rate, beta_1):
@@ -115,7 +153,7 @@ def find_beta_0(df, predictor_column, target_missing_rate, beta_1):
 
 ## MISSING AT RANDOM (MAR) 
 
-def mar(df, target_column, predictor_column, target_missing_rate=0.2, beta_1=0.2, seed=42):
+def mar(df, target_column, predictor_column, target_missing_rate=0.2, beta_1=0.1, seed=42):
     np.random.seed(seed)
     df_mar = df.copy()
     
@@ -155,7 +193,7 @@ def mar(df, target_column, predictor_column, target_missing_rate=0.2, beta_1=0.2
     # Violin plot 
     df_mar['missing'] = df_mar[target_column].isna()
     plt.figure(figsize=(8, 6))
-    sns.violinplot(x=df_mar['missing'], y=df_mar['Age'], inner="quart")
+    sns.violinplot(x=df_mar['missing'], y=df_mar['age'], inner="quart")
     plt.xticks([0, 1], ['Observed', 'Missing'])
     plt.xlabel(f'{target_column} Missingness')
     plt.ylabel('Age')
@@ -164,12 +202,12 @@ def mar(df, target_column, predictor_column, target_missing_rate=0.2, beta_1=0.2
     
     return df_mar
 
-data_mar = mar(data, target_column='Cholesterol', predictor_column='Age')
+data_mar = mar(data, target_column='bp', predictor_column='age')
 plot_missingness(data_mar, "MAR Missingness Pattern")
 
 # MISSINGNESS NOT AT RANDOM
 
-def mnar(df, target_column, target_missing_rate=0.2, beta_1=0.2, seed=42):
+def mnar(df, target_column, target_missing_rate=0.2, beta_1=0.1, seed=42):
     np.random.seed(seed)
     df_mnar = df.copy()
     
@@ -217,6 +255,6 @@ def mnar(df, target_column, target_missing_rate=0.2, beta_1=0.2, seed=42):
     
     return df_mnar
 
-data_mnar = mnar(data, target_column='Cholesterol')
+data_mnar = mnar(data, target_column='bp')
 plot_missingness(data_mnar, "MNAR Missingness Pattern")
 
