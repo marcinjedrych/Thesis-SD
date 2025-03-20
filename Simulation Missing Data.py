@@ -12,7 +12,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.special import expit 
 
-def generate_patient_data(nsamples=1000, seed=123):
+def generate_patient_data(nsamples=10000, seed=123):
     np.random.seed(seed)  # Set seed for reproducibility
     
     # Generate Age and Weight
@@ -270,56 +270,13 @@ bp_mcar = mcar(data, 'bp')
 bp_mar = mar(data, 'bp', 'age')
 bp_mnar = mnar(data, 'bp')
 
-## - strategies
+#export to datafolder
+weight_mcar.to_excel("Data/weight_mcar.xlsx", index=False)
+weight_mar.to_excel("Data/weight_mar.xlsx", index=False)
+weight_mnar.to_excel("Data/weight_mnar.xlsx", index=False)
 
-def complete_cases(df):
-    
-    """from paper multiple imputation & stefvanbuuren.name: 
-        - When only outcome variable has missingness this approach is valid under MCAR, MAR. (best choice)
-        - Also when missing data probability does not depend on the outcome variable Y (even under MNAR)
-        - Or when Logistic Regression with missing data only in Y or X (but not both)"""
+bp_mcar.to_excel("Data/bp_mcar.xlsx", index=False)
+bp_mar.to_excel("Data/bp_mar.xlsx", index=False)
+bp_mnar.to_excel("Data/bp_mnar.xlsx", index=False)
 
-    return df.dropna()
 
-from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import IterativeImputer
-from sklearn.preprocessing import OrdinalEncoder
-
-def multiple_imputation(df, n_imputations=5):
-    
-    """ (from stefvanbuuren.name)
-        - When covariates have missingness & MAR: estimated statistics and regression coefficients biased with complete case analysis
-        - When covariates have missingness & MCAR: reduction in sample size will still reduce precision of estimated coefficients"""
-        
-    df_copy = df.copy()
-    
-    # Identify categorical columns
-    categorical_cols = df_copy.select_dtypes(include=["object", "category"]).columns
-    
-    # Encode categorical columns
-    encoder = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
-    df_copy[categorical_cols] = encoder.fit_transform(df_copy[categorical_cols])
-    
-    # Initialize the imputer
-    imputer = IterativeImputer(max_iter=10, sample_posterior=True, random_state=0)  
-    
-    # Generate multiple imputed datasets
-    imputed_datasets = []
-    for _ in range(n_imputations):
-        imputed_data = imputer.fit_transform(df_copy)
-        imputed_df = pd.DataFrame(imputed_data, columns=df.columns)
-        imputed_datasets.append(imputed_df)
-    
-    # Combine results: Take mean for numerical, mode for categorical
-    combined_imputed_df = pd.concat(imputed_datasets).groupby(level=0).mean()
-    
-    for col in categorical_cols:
-        combined_imputed_df[col] = pd.concat(imputed_datasets)[col].groupby(level=0).agg(lambda x: x.mode()[0])
-        combined_imputed_df[col] = combined_imputed_df[col].round().astype(int)
-    
-    # Decode categorical columns back
-    combined_imputed_df[categorical_cols] = encoder.inverse_transform(combined_imputed_df[categorical_cols])
-    
-    return combined_imputed_df
-    
-bp_mar_imputed = multiple_imputation(bp_mar)
