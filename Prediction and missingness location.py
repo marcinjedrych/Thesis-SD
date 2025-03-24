@@ -61,23 +61,24 @@ def complete_cases(df):
 
     return df.dropna()
 
-def train_and_evaluate(df, target, label, strategy = "CCA"):
+def train_and_evaluate(train, test , target, label, strategy = "CCA"):
     
     # handling missingness
     if strategy == "CCA":
-        df = complete_cases(df)
+        train = complete_cases(train)
     else:
-        df = multiple_imputation(df)
+        train = multiple_imputation(train)
     
     # Handle categorical variables
-    df = pd.get_dummies(df, columns=['stage'])
+    train = pd.get_dummies(train, columns=['stage'])
+    test = pd.get_dummies(test, columns=['stage'])
     
     # Separate predictors (X) and outcome (y)
-    X = df.drop(columns=[target])  # Use all available predictors
-    y = df[target]
-
-    # Split data into training and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train = train.drop(columns=[target, 'missing'])  # Use all available predictors except msiing because this is also not in the test data
+    y_train = train[target]
+    
+    X_test = test.drop(columns=[target])  # Use all available predictors
+    y_test = test[target]
 
     # Train the regression model
     model = LinearRegression()
@@ -97,6 +98,7 @@ def train_and_evaluate(df, target, label, strategy = "CCA"):
     return model, mse, r2
 
 # Load data into a dictionary
+test_data = pd.read_excel("data/test_data.xlsx")
 datasets = {
     "MCAR": (pd.read_excel("data/weight_mcar.xlsx"), pd.read_excel("data/bp_mcar.xlsx")),
     "MAR": (pd.read_excel("data/weight_mar.xlsx"), pd.read_excel("data/bp_mar.xlsx")),
@@ -108,8 +110,8 @@ results = {}
 print('\n ---- Complete case analysis (CCA) ---- \n')
 
 for label, (missing_weight, missing_bp) in datasets.items():
-    model_w, mse_w, r2_w = train_and_evaluate(missing_weight, 'bp', label)
-    model_bp, mse_bp, r2_bp = train_and_evaluate(missing_bp, 'bp', label)
+    model_w, mse_w, r2_w = train_and_evaluate(missing_weight, test_data, 'bp', label)
+    model_bp, mse_bp, r2_bp = train_and_evaluate(missing_bp, test_data, 'bp', label)
     results[label] = {"MSE m_weight": mse_w, "R² Score m_weight": r2_w, "MSE m_Bp": mse_bp, "R² Score m_Bp" : r2_bp }
 
 comparison_cca = pd.DataFrame.from_dict(results, orient="index").reset_index().rename(columns={"index": "Missingness Type"})
@@ -122,8 +124,8 @@ results = {}
 print('\n ---- Multiple Imputation (MI) ---- \n')
 
 for label, (missing_weight, missing_bp) in datasets.items():
-    model_w, mse_w, r2_w = train_and_evaluate(missing_weight, 'bp', label, strategy="MI")
-    model_bp, mse_bp, r2_bp = train_and_evaluate(missing_bp, 'bp', label, strategy = "MI")
+    model_w, mse_w, r2_w = train_and_evaluate(missing_weight, test_data, 'bp', label, strategy="MI")
+    model_bp, mse_bp, r2_bp = train_and_evaluate(missing_bp, test_data, 'bp', label, strategy = "MI")
     results[label] = {"MSE m_weight": mse_w, "R² Score m_weight": r2_w, "MSE m_Bp": mse_bp, "R² Score m_Bp" : r2_bp }
 
 comparison_mi = pd.DataFrame.from_dict(results, orient="index").reset_index().rename(columns={"index": "Missingness Type"})

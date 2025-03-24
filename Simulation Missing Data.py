@@ -11,6 +11,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.special import expit 
+from sklearn.model_selection import train_test_split
 
 def generate_patient_data(nsamples=10000, seed=123):
     np.random.seed(seed)  # Set seed for reproducibility
@@ -83,8 +84,13 @@ def plot_missingness(df, title):
     plt.title(title)
     plt.show()
 
-# Generate patient data
+# Generate patient data and split
 data = generate_patient_data()
+train_idx, test_idx = train_test_split(data.index, test_size=0.2, random_state=123)
+train_data = data.loc[train_idx]
+test_data = data.loc[test_idx]
+test_data.to_excel("Data/test_data.xlsx", index = True)  #export test data
+
 
 ## MISSING COMPLETELY AT RANDOM
 
@@ -120,7 +126,6 @@ def mcar(df, target_column, missing_rate=0.2, seed=123):
 
 # data_mcar = mcar(data, target_column='bp')
 # plot_missingness(data_mcar, "MCAR Missingness Pattern")
-
 
 #find optimal beta0
 def find_beta_0(df, predictor_column, target_missing_rate, beta_1):
@@ -261,30 +266,28 @@ def mnar(df, target_column, target_missing_rate=0.2, beta_1=0.1, seed=123):
 ## --- Missingness in predictor vs outcome variable ---
 
 # missingness in predictor
-weight_mcar = mcar(data, 'weight')
-weight_mar = mar(data, 'weight', 'age')
-weight_mnar = mnar(data, 'weight')
+weight_mcar = mcar(train_data, 'weight')
+weight_mar = mar(train_data, 'weight', 'age')
+weight_mnar = mnar(train_data, 'weight')
 
 #missingness in outcome
-bp_mcar = mcar(data, 'bp')
-bp_mar = mar(data, 'bp', 'age')
-bp_mnar = mnar(data, 'bp')
+bp_mcar = mcar(train_data, 'bp')
+bp_mar = mar(train_data, 'bp', 'age')
+bp_mnar = mnar(train_data, 'bp')
 
 # Export to datafolder
 
-#baseline
-data.to_excel("Data/No_missing_data.xlsx", index = False)
-import os
-print("File saved:", os.path.exists("Data/no_missing_data.xlsx"))
+#baseline (train)
+train_data.to_excel("Data/No_missing_data.xlsx", index = True)
 
 # missingness in continuous predictor
-weight_mcar.to_excel("Data/weight_mcar.xlsx", index=False)
-weight_mar.to_excel("Data/weight_mar.xlsx", index=False)
-weight_mnar.to_excel("Data/weight_mnar.xlsx", index=False)
+weight_mcar.to_excel("Data/weight_mcar.xlsx", index= True)
+weight_mar.to_excel("Data/weight_mar.xlsx", index= True)
+weight_mnar.to_excel("Data/weight_mnar.xlsx", index= True)
 
 # missingness in continuous outcome
-bp_mcar.to_excel("Data/bp_mcar.xlsx", index=False)
-bp_mar.to_excel("Data/bp_mar.xlsx", index=False)
-bp_mnar.to_excel("Data/bp_mnar.xlsx", index=False)
+bp_mcar.to_excel("Data/bp_mcar.xlsx", index= True)
+bp_mar.to_excel("Data/bp_mar.xlsx", index= True)
+bp_mnar.to_excel("Data/bp_mnar.xlsx", index= True)
 
 
