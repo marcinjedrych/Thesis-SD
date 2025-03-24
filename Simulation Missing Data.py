@@ -88,7 +88,7 @@ data = generate_patient_data()
 
 ## MISSING COMPLETELY AT RANDOM
 
-def mcar(df, target_column, missing_rate=0.2, seed=42):
+def mcar(df, target_column, missing_rate=0.2, seed=123):
     
     np.random.seed(seed)
     df_mcar = df.copy()
@@ -118,8 +118,8 @@ def mcar(df, target_column, missing_rate=0.2, seed=42):
 
     return df_mcar
 
-data_mcar = mcar(data, target_column='bp')
-plot_missingness(data_mcar, "MCAR Missingness Pattern")
+# data_mcar = mcar(data, target_column='bp')
+# plot_missingness(data_mcar, "MCAR Missingness Pattern")
 
 
 #find optimal beta0
@@ -153,7 +153,7 @@ def find_beta_0(df, predictor_column, target_missing_rate, beta_1):
 
 ## MISSING AT RANDOM (MAR) 
 
-def mar(df, target_column, predictor_column, target_missing_rate=0.2, beta_1=0.1, seed=42):
+def mar(df, target_column, predictor_column, target_missing_rate=0.2, beta_1=0.1, seed=123):
     np.random.seed(seed)
     df_mar = df.copy()
     
@@ -202,12 +202,12 @@ def mar(df, target_column, predictor_column, target_missing_rate=0.2, beta_1=0.1
     
     return df_mar
 
-data_mar = mar(data, target_column='bp', predictor_column='age')
-plot_missingness(data_mar, "MAR Missingness Pattern")
+# data_mar = mar(data, target_column='bp', predictor_column='age')
+# plot_missingness(data_mar, "MAR Missingness Pattern")
 
 # MISSINGNESS NOT AT RANDOM
 
-def mnar(df, target_column, target_missing_rate=0.2, beta_1=0.1, seed=42):
+def mnar(df, target_column, target_missing_rate=0.2, beta_1=0.1, seed=123):
     np.random.seed(seed)
     df_mnar = df.copy()
     
@@ -255,8 +255,8 @@ def mnar(df, target_column, target_missing_rate=0.2, beta_1=0.1, seed=42):
     
     return df_mnar
 
-data_mnar = mnar(data, target_column='bp')
-plot_missingness(data_mnar, "MNAR Missingness Pattern")
+# data_mnar = mnar(data, target_column='bp')
+# plot_missingness(data_mnar, "MNAR Missingness Pattern")
 
 ## --- Missingness in predictor vs outcome variable ---
 
@@ -270,11 +270,19 @@ bp_mcar = mcar(data, 'bp')
 bp_mar = mar(data, 'bp', 'age')
 bp_mnar = mnar(data, 'bp')
 
-#export to datafolder
+# Export to datafolder
+
+#baseline
+data.to_excel("Data/No_missing_data.xlsx", index = False)
+import os
+print("File saved:", os.path.exists("Data/no_missing_data.xlsx"))
+
+# missingness in continuous predictor
 weight_mcar.to_excel("Data/weight_mcar.xlsx", index=False)
 weight_mar.to_excel("Data/weight_mar.xlsx", index=False)
 weight_mnar.to_excel("Data/weight_mnar.xlsx", index=False)
 
+# missingness in continuous outcome
 bp_mcar.to_excel("Data/bp_mcar.xlsx", index=False)
 bp_mar.to_excel("Data/bp_mar.xlsx", index=False)
 bp_mnar.to_excel("Data/bp_mnar.xlsx", index=False)
