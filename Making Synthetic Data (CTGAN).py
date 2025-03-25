@@ -2,6 +2,8 @@
 """
 Created on Tue Mar 25 20:50:38 2025
 
+Code to convert dataframe in synthetic one
+
 @author: Marcin
 """
 
