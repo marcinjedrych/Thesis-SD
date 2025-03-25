@@ -38,7 +38,7 @@ def generate_patient_data(nsamples=10000, seed=123):
     therapy = np.random.choice([False, True], size=nsamples, p=[0.5, 0.5])
     
     # Blood Pressure (BP) influenced by Stage, Therapy, and Weight
-    bp_intercept = 120
+    bp_intercept = 100
     bp_beta_stage = [0, 10, 20, 30]  # Increasing severity increases BP
     bp_beta_therapy = -20  # Therapy lowers BP
     bp_beta_weight = 0.5  # Higher weight increases BP
