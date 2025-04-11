@@ -46,7 +46,7 @@ def generate_patient_data(nsamples=10000, seed=123):
     bp = np.random.normal(loc=bp_betas, scale=10, size=nsamples)
     
     # Hospital Death (New Binary Variable)
-    death_intercept = -8
+    death_intercept = -6
     death_beta_age = 0.04       # 1 year ≈ OR 1.04
     death_beta_stage = 0      # Per-stage increase
     death_beta_bp = 0.02        # mmHg increase

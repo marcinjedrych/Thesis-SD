@@ -2,31 +2,13 @@
 """
 Created on Tue Mar 25 20:50:38 2025
 
-Code to convert dataframe in synthetic one
+Code to make synthetic versions
 
 @author: Marcin
 """
 
 import pandas as pd
-from sdv.single_table import CTGANSynthesizer
-from sdv.metadata import SingleTableMetadata
-
-def generate_synthetic_data(df):
-    
-    if 'Unnamed: 0' in df.columns:
-        df = df.rename(columns={'Unnamed: 0': 'Index'})
-    index = df['Index']
-    df = df.drop(columns=['Index'])
-
-    metadata_obj = SingleTableMetadata()
-    metadata_obj.detect_from_dataframe(df)
-    synthesizer = CTGANSynthesizer(metadata_obj)
-    synthesizer.fit(df)
-    synthetic_data = synthesizer.sample(num_rows=len(df))
-
-    synthetic_data.insert(0, 'Index', index)
-    
-    return synthetic_data
+from functions.ctgan import generate_synthetic_data
 
 import os
 
