@@ -49,11 +49,15 @@ preprocessor = ColumnTransformer(
 base_learners = [
     ('decision_tree', DecisionTreeClassifier(max_depth=5, random_state=42)),
     ('random_forest', RandomForestClassifier(n_estimators=100, random_state=42)),
-    ('svc', SVC(probability=True, random_state=42))
+    ('svc', SVC(probability=True, random_state=42)),
+    ('log_reg', LogisticRegression(max_iter=1000, random_state=42))
 ]
-
 # --- 6. Define meta-learner
-meta_learner = LogisticRegression(max_iter=1000, random_state=42)
+from sklearn.ensemble import GradientBoostingClassifier
+
+# --- 6. Define meta-learner (changed from LogisticRegression to GradientBoostingClassifier)
+meta_learner = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, random_state=42)
+#meta_learner = LogisticRegression(max_iter=1000, random_state=42)
 
 # --- 7. Create the SuperLearner pipeline
 model = Pipeline(steps=[
