@@ -14,6 +14,9 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, recall_score, precision_score, confusion_matrix
 from functions.other import results_to_excel, format_dataframe
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import brier_score_loss
+
 
 # Load Data
 
@@ -71,15 +74,18 @@ test_data = test_data.rename(columns={'Unnamed: 0': 'Index'})
 
 # Initialize an empty list to store results
 results = []
-
 def logistic_regression(train, test, target, label):
+    
     # Handle categorical variables
     train = pd.get_dummies(train, columns=['stage'])
     test = pd.get_dummies(test, columns=['stage'])
     
     # Separate predictors (X) and outcome (y)
     X_train = train.drop(columns=[target])
+    X_train = X_train.drop(columns=['Index', 'weight', 'stage_I', 'stage_II', 'stage_III', 'stage_IV'])
+    print(X_train.columns)
     X_test = test.drop(columns=[target])
+    X_test = X_test.drop(columns=['Index', 'weight', 'stage_I', 'stage_II', 'stage_III', 'stage_IV'])
     
     y_train = train[target]
     y_test = test[target]
@@ -87,30 +93,38 @@ def logistic_regression(train, test, target, label):
     # Train logistic regression model
     model = LogisticRegression(max_iter=1000, random_state=123)
     model.fit(X_train, y_train)
-    
-    # Make predictions
+
+    # Predictions
     y_pred = model.predict(X_test)
-    
-    # Evaluate performance
+    y_prob = model.predict_proba(X_test)[:, 1]  # probability of class 1
+
+    # discrimination metrics 
     acc = accuracy_score(y_test, y_pred)
     recall = recall_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
+    precision = precision_score(y_test,y_pred)
     conf_matrix = confusion_matrix(y_test, y_pred)
     
-    print(f"\nPerformance for {label}:")
-    print(f"  - Accuracy: {acc:.4f}")
-    print(f"  - Recall: {recall:.4f}")
-    print(f"  - Precision: {precision:.4f}")
-    print("  - Confusion Matrix:")
-
+    # Calibration metrics
+    brier = brier_score_loss(y_test, y_prob) # mean squared difference between predicted probabilities and actual binary outcomes.
+    prob_true, prob_pred = calibration_curve(y_test, y_prob, n_bins=10)
+    
     # Save results
     results.append({
         'Model': label,
         'Accuracy': acc,
         'Recall': recall,
-        'Precision': precision
+        'Precision': precision,
+        'Brier Score': brier
     })
     
+    # Output
+    print(f"\nPerformance for {label}:")
+    print(f"  - Accuracy: {acc:.4f}")
+    print(f"  - Recall: {recall:.4f}")
+    print(f"  - Precision: {precision:.4f}")
+    print(f"  - Brier Score: {brier:.4f}")
+    print("  - Confusion Matrix:")
+        
     # Plot confusion matrix
     plt.figure(figsize=(6,5))
     sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues')
@@ -119,7 +133,18 @@ def logistic_regression(train, test, target, label):
     plt.title(f'Confusion Matrix for {label}')
     plt.show()
     
-    return model, acc, recall, precision, conf_matrix
+    # Calibration plot: predicted probabilities vs. observed frequencies, perfectly calibrated model lies on the diagonal (y = x).
+    plt.figure(figsize=(6,5))
+    plt.plot(prob_pred, prob_true, marker='o', label='Model')
+    plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Perfectly Calibrated')
+    plt.xlabel('Mean Predicted Probability')
+    plt.ylabel('Actual hospitaldeath = 1')
+    plt.title(f'Calibration Curve for {label}')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    return model, acc, recall, precision, brier, conf_matrix
 
 # Define your target variable
 target_variable = 'hospitaldeath'

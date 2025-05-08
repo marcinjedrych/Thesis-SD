@@ -89,6 +89,11 @@ def plot_relationships(data):
     plt.title("Effect of Weight on Blood Pressure")
     plt.show()
     
+    plt.figure(figsize=(6, 5))
+    sns.regplot(x='age', y='bp', data=data, lowess=True, scatter_kws={'alpha':0.5})
+    plt.title("Effect of age on Blood Pressure")
+    plt.show()
+    
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     sns.barplot(x='stage', y='bp', data=data, ax=axes[0], order=['I', 'II', 'III', 'IV'])
     axes[0].set_title("Effect of Disease Stage on Blood Pressure")
@@ -133,5 +138,5 @@ def plot_relationships(data):
     plt.show()
 
 # Generate and plot data
-#data = sample_disease(2000)
-#plot_relationships(data)
+data = generate_patient_data(2000)
+plot_relationships(data)
