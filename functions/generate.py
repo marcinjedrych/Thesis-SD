@@ -40,9 +40,10 @@ def generate_patient_data(nsamples=10000, seed=123):
     bp_beta_stage = [0, 10, 20, 30]
     bp_beta_therapy = -20
     bp_beta_weight = 0.5
+    bp_beta_age = 1
     
     stage_to_bp_beta = dict(zip(stage_tags, bp_beta_stage))
-    bp_betas = bp_intercept + np.array([stage_to_bp_beta[s] for s in stage]) + bp_beta_therapy * therapy + bp_beta_weight * weight
+    bp_betas = bp_intercept + np.array([stage_to_bp_beta[s] for s in stage]) + bp_beta_therapy * therapy + bp_beta_weight * weight + bp_beta_age * age
     bp = np.random.normal(loc=bp_betas, scale=10, size=nsamples)
     
     # Hospital Death (New Binary Variable)

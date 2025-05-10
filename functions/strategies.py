@@ -54,3 +54,17 @@ def complete_cases(df):
         - Or when Logistic Regression with missing data only in Y or X (but not both)"""
 
     return df.dropna()
+
+# needed for learned NA but not before training (NOT before making data synthetic!)
+def missing_indicator(df, column):
+
+    df = df.copy()
+    indicator_col = f"{column}_missing"
+    
+    # Create missing indicator
+    df[indicator_col] = df[column].isna().astype(int)
+    
+    # Impute missing values with 0
+    df[column] = df[column].fillna(0)
+    
+    return df

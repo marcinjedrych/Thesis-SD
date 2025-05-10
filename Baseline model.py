@@ -16,6 +16,9 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, confu
 from functions.other import results_to_excel
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss
+from sklearn.metrics import roc_auc_score  # ADD THIS IMPORT
+from sklearn.metrics import roc_curve
+
 
 no_missing = pd.read_excel("data/original/no_missing.xlsx")
 no_missing = no_missing.rename(columns={'Unnamed: 0': 'Index'})
@@ -33,10 +36,10 @@ def logistic_regression(train, test, target, label):
     
     # Separate predictors (X) and outcome (y)
     X_train = train.drop(columns=[target])
-    X_train = X_train.drop(columns=['Index', 'weight', 'stage_I', 'stage_II', 'stage_III', 'stage_IV'])
+    X_train = X_train.drop(columns=['Index'])
     print(X_train.columns)
     X_test = test.drop(columns=[target])
-    X_test = X_test.drop(columns=['Index', 'weight', 'stage_I', 'stage_II', 'stage_III', 'stage_IV'])
+    X_test = X_test.drop(columns=['Index'])
     
     y_train = train[target]
     y_test = test[target]
@@ -53,6 +56,9 @@ def logistic_regression(train, test, target, label):
     acc = accuracy_score(y_test, y_pred)
     recall = recall_score(y_test, y_pred)
     precision = precision_score(y_test,y_pred)
+    auc = roc_auc_score(y_test, y_prob)  
+    
+    fpr, tpr, _ = roc_curve(y_test, y_prob)  # ROC curve values
     conf_matrix = confusion_matrix(y_test, y_pred)
     
     # Calibration metrics
@@ -65,6 +71,7 @@ def logistic_regression(train, test, target, label):
         'Accuracy': acc,
         'Recall': recall,
         'Precision': precision,
+        'AUC': auc,
         'Brier Score': brier
     })
     
@@ -73,6 +80,7 @@ def logistic_regression(train, test, target, label):
     print(f"  - Accuracy: {acc:.4f}")
     print(f"  - Recall: {recall:.4f}")
     print(f"  - Precision: {precision:.4f}")
+    print(f"  - AUC: {auc:.4f}")
     print(f"  - Brier Score: {brier:.4f}")
     print("  - Confusion Matrix:")
         
@@ -83,6 +91,18 @@ def logistic_regression(train, test, target, label):
     plt.ylabel('Actual')
     plt.title(f'Confusion Matrix for {label}')
     plt.show()
+    
+    # ROC Curve
+    plt.figure(figsize=(6,5))
+    plt.plot(fpr, tpr, label=f'AUC = {auc:.2f}')
+    plt.plot([0, 1], [0, 1], linestyle='--', color='gray')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'ROC Curve for {label}')
+    plt.legend(loc='lower right')
+    plt.grid(True)
+    plt.show()
+
     
     # Calibration plot: predicted probabilities vs. observed frequencies, perfectly calibrated model lies on the diagonal (y = x).
     plt.figure(figsize=(6,5))

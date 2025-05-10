@@ -46,6 +46,8 @@ def mcar(df, target_column, missing_rate=0.2, seed=123):
     plt.ylabel('Age')
     plt.title('MCAR Violin plot')
     plt.show()
+    
+    df_mcar = df_mcar.drop(columns=['missing'])
 
     return df_mcar
 
@@ -128,6 +130,8 @@ def mar(df, target_column, predictor_column, target_missing_rate=0.2, beta_1=0.1
     plt.title('MAR Violin plot')
     plt.show()
     
+    df_mar = df_mar.drop(columns=['missing'])
+    
     return df_mar
 
 
@@ -178,5 +182,7 @@ def mnar(df, target_column, target_missing_rate=0.2, beta_1=0.1, seed=123):
     plt.ylabel(f'{target_column}')
     plt.title('MNAR Violin plot')
     plt.show()
+    
+    df_mnar = df_mnar.drop(columns=['missing'])
     
     return df_mnar

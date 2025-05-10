@@ -16,7 +16,9 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, confu
 from functions.other import results_to_excel, format_dataframe
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss
-
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_curve
+from functions.strategies import missing_indicator
 
 # Load Data
 
@@ -74,7 +76,13 @@ test_data = test_data.rename(columns={'Unnamed: 0': 'Index'})
 
 # Initialize an empty list to store results
 results = []
-def logistic_regression(train, test, target, label):
+
+def logistic_regression(train, test, target, label, NA = False):
+    
+    #if NA in dataset use missing indicator (for Learned NA)
+    if NA is True:
+        train = missing_indicator(train, 'bp')
+        test = missing_indicator(test, 'bp')
     
     # Handle categorical variables
     train = pd.get_dummies(train, columns=['stage'])
@@ -82,10 +90,10 @@ def logistic_regression(train, test, target, label):
     
     # Separate predictors (X) and outcome (y)
     X_train = train.drop(columns=[target])
-    X_train = X_train.drop(columns=['Index', 'weight', 'stage_I', 'stage_II', 'stage_III', 'stage_IV'])
+    X_train = X_train.drop(columns=['Index'])
     print(X_train.columns)
     X_test = test.drop(columns=[target])
-    X_test = X_test.drop(columns=['Index', 'weight', 'stage_I', 'stage_II', 'stage_III', 'stage_IV'])
+    X_test = X_test.drop(columns=['Index'])
     
     y_train = train[target]
     y_test = test[target]
@@ -102,6 +110,9 @@ def logistic_regression(train, test, target, label):
     acc = accuracy_score(y_test, y_pred)
     recall = recall_score(y_test, y_pred)
     precision = precision_score(y_test,y_pred)
+    auc = roc_auc_score(y_test, y_prob)  
+    
+    fpr, tpr, _ = roc_curve(y_test, y_prob)  # ROC curve values
     conf_matrix = confusion_matrix(y_test, y_pred)
     
     # Calibration metrics
@@ -114,6 +125,7 @@ def logistic_regression(train, test, target, label):
         'Accuracy': acc,
         'Recall': recall,
         'Precision': precision,
+        'AUC': auc,
         'Brier Score': brier
     })
     
@@ -122,6 +134,7 @@ def logistic_regression(train, test, target, label):
     print(f"  - Accuracy: {acc:.4f}")
     print(f"  - Recall: {recall:.4f}")
     print(f"  - Precision: {precision:.4f}")
+    print(f"  - AUC: {auc:.4f}")
     print(f"  - Brier Score: {brier:.4f}")
     print("  - Confusion Matrix:")
         
@@ -132,6 +145,18 @@ def logistic_regression(train, test, target, label):
     plt.ylabel('Actual')
     plt.title(f'Confusion Matrix for {label}')
     plt.show()
+    
+    # ROC Curve
+    plt.figure(figsize=(6,5))
+    plt.plot(fpr, tpr, label=f'AUC = {auc:.2f}')
+    plt.plot([0, 1], [0, 1], linestyle='--', color='gray')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'ROC Curve for {label}')
+    plt.legend(loc='lower right')
+    plt.grid(True)
+    plt.show()
+
     
     # Calibration plot: predicted probabilities vs. observed frequencies, perfectly calibrated model lies on the diagonal (y = x).
     plt.figure(figsize=(6,5))
@@ -144,6 +169,7 @@ def logistic_regression(train, test, target, label):
     plt.grid(True)
     plt.show()
 
+
     return model, acc, recall, precision, brier, conf_matrix
 
 # Define your target variable
@@ -154,29 +180,30 @@ target_variable = 'hospitaldeath'
 # MCAR
 logistic_regression(original_mcar_cca, test_data, target=target_variable, label="Original CCA (MCAR)")
 logistic_regression(original_mcar_mi, test_data, target=target_variable, label="Original MI (MCAR)")
-#logistic_regression(original_mcar_na, test_data, target=target_variable, label="Original Learned NA (MCAR)")
+logistic_regression(original_mcar_na, test_data, target=target_variable, label="Original Learned NA (MCAR)", NA = True)
 
 logistic_regression(syn_mcar_cca, test_data, target=target_variable, label="Synthetic CCA (MCAR)")
 logistic_regression(syn_mcar_mi, test_data, target=target_variable, label="Synthetic MI (MCAR)")
-#logistic_regression(syn_mcar_na, test_data, target=target_variable, label="Synthetic Learned NA (MCAR)")
+logistic_regression(syn_mcar_na, test_data, target=target_variable, label="Synthetic Learned NA (MCAR)", NA = True)
 
 # MAR
 logistic_regression(original_mar_cca, test_data, target=target_variable, label="Original CCA (MAR)")
 logistic_regression(original_mar_mi, test_data, target=target_variable, label="Original MI (MAR)")
-#logistic_regression(original_mar_na, test_data, target=target_variable, label="Original Learned NA (MAR)")
+logistic_regression(original_mar_na, test_data, target=target_variable, label="Original Learned NA (MAR)", NA = True)
 
 logistic_regression(syn_mar_cca, test_data, target=target_variable, label="Synthetic CCA (MAR)")
 logistic_regression(syn_mar_mi, test_data, target=target_variable, label="Synthetic MI (MAR)")
-#logistic_regression(syn_mar_na, test_data, target=target_variable, label="Synthetic Learned NA (MAR)")
+logistic_regression(syn_mar_na, test_data, target=target_variable, label="Synthetic Learned NA (MAR)", NA = True)
 
 # MNAR
 logistic_regression(original_mnar_cca, test_data, target=target_variable, label="Original CCA (MNAR)")
 logistic_regression(original_mnar_mi, test_data, target=target_variable, label="Original MI (MNAR)")
-#logistic_regression(original_mnar_na, test_data, target=target_variable, label="Original Learned NA (MNAR)")
+logistic_regression(original_mnar_na, test_data, target=target_variable, label="Original Learned NA (MNAR)", NA = True)
 
 logistic_regression(syn_mnar_cca, test_data, target=target_variable, label="Synthetic CCA (MNAR)")
 logistic_regression(syn_mnar_mi, test_data, target=target_variable, label="Synthetic MI (MNAR)")
-#logistic_regression(syn_mnar_na, test_data, target=target_variable, label="Synthetic Learned NA (MNAR)")
+logistic_regression(syn_mnar_na, test_data, target=target_variable, label="Synthetic Learned NA (MNAR)", NA = True)
 
 # Save all results to Excel
 results_to_excel(results)
+
