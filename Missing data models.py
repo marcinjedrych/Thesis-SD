@@ -90,10 +90,10 @@ def logistic_regression(train, test, target, label, NA = False):
     
     # Separate predictors (X) and outcome (y)
     X_train = train.drop(columns=[target])
-    X_train = X_train.drop(columns=['Index'])
+    X_train = X_train.drop(columns=['Index','bp'])
     print(X_train.columns)
     X_test = test.drop(columns=[target])
-    X_test = X_test.drop(columns=['Index'])
+    X_test = X_test.drop(columns=['Index','bp'])
     
     y_train = train[target]
     y_test = test[target]

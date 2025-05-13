@@ -8,9 +8,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import re
+sns.set_style("whitegrid")
 
-
-results = pd.read_excel("performance.xlsx")
+results = pd.read_excel("performance_no_bp.xlsx")
 #results = pd.read_excel("model_performance_summary.xlsx")
 results = results.dropna()
 
