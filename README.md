@@ -16,8 +16,8 @@ This is a repository for my thesis in statistical data-analysis. I will investig
    - Logistic regression model to predict hospital death
    - Synthetic vs. Original on complete datasets.
    
-5. Missing data models.py
+4. Missing data models.py
   - Logistic regression model to predict hospital death
   - Synthetic vs. Original on complete datasets.
 
-6.
+5.
