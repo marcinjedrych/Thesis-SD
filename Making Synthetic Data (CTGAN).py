@@ -8,7 +8,7 @@ Code to make synthetic versions
 """
 
 import pandas as pd
-from functions.ctgan import generate_synthetic_data
+from functions.ctgan_syn import generate_synthetic_data
 
 import os
 

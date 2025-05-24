@@ -47,10 +47,10 @@ def generate_patient_data(nsamples=10000, seed=123):
     bp = np.random.normal(loc=bp_betas, scale=10, size=nsamples)
     
     # Hospital Death (New Binary Variable)
-    death_intercept = -6
-    death_beta_age = 0.04       # 1 year ≈ OR 1.04
+    death_intercept = -9 #-6
+    death_beta_age = 0 #0.04       # 1 year ≈ OR 1.04
     death_beta_stage = 0      # Per-stage increase
-    death_beta_bp = 0.02        # mmHg increase
+    death_beta_bp = 0.04   #0.02     # mmHg increase
     death_beta_weight = 0  
     death_beta_therapy = 0   
     
@@ -79,6 +79,14 @@ def generate_patient_data(nsamples=10000, seed=123):
 def plot_relationships(data):
     sns.set(style="whitegrid")
     
+    #class balance
+    data['hospitaldeath'].value_counts().plot(kind='bar')
+    plt.xlabel('hospitaldeath')
+    plt.ylabel('Frequency')
+    plt.title('Class Balance of hospdeath')
+    plt.xticks([0, 1], rotation=0)
+    plt.show()
+        
     # Original plots
     plt.figure(figsize=(6, 5))
     sns.violinplot(x='stage', y='age', data=data, order=['I', 'II', 'III', 'IV'])
