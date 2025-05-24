@@ -20,4 +20,5 @@ This is a repository for my thesis in statistical data-analysis. I will investig
   - Logistic regression model to predict hospital death
   - Synthetic vs. Original on complete datasets.
 
-5.
+5. Performance plots
+   - VIsualizes performance of models
