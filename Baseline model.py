@@ -7,8 +7,9 @@ Baseline models
 @author: Marcin
 """
 
+outcome = 'continuous' # 'binary' or 'continuous'
+
 import matplotlib.pyplot as plt
-import os
 import seaborn as sns
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
@@ -16,9 +17,8 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, confu
 from functions.other import results_to_excel
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss
-from sklearn.metrics import roc_auc_score  # ADD THIS IMPORT
+from sklearn.metrics import roc_auc_score 
 from sklearn.metrics import roc_curve
-
 
 no_missing = pd.read_excel("data/original/no_missing.xlsx")
 no_missing = no_missing.rename(columns={'Unnamed: 0': 'Index'})
@@ -26,8 +26,9 @@ no_missing = no_missing.rename(columns={'Unnamed: 0': 'Index'})
 test_data = pd.read_excel("data/test_data.xlsx")
 test_data = test_data.rename(columns={'Unnamed: 0': 'Index'})
 
-# Initialize an empty list to store results
+#empty list to store results
 results = []
+
 def logistic_regression(train, test, target, label):
     
     # Handle categorical variables
@@ -117,17 +118,91 @@ def logistic_regression(train, test, target, label):
 
     return model, acc, recall, precision, brier, conf_matrix
 
+if outcome == 'binary':
+    ### ---- ORIGINAL BASELINE ----
+    
+    log_model, acc, recall, precision, brier, cm = logistic_regression(no_missing, test_data, 'hospitaldeath', label='Original Baseline (no missingness)')
+    
+    ### ---- SYNTHETIC BASELINE ----
+    
+    synthetic_no_missing = pd.read_excel("data/Synthetic/synthetic_no_missing.xlsx")
+    log_model, acc, recall, precision, brier, cm = logistic_regression(synthetic_no_missing, test_data, 'hospitaldeath', label='Synthetic Baseline (no missingness)')
+    
+    # model performance summary
+    results_to_excel(results)
 
-### ---- ORIGINAL BASELINE ----
+### CONTINUOUS
+ 
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
 
-log_model, acc, recall, precision, brier, cm = logistic_regression(no_missing, test_data, 'hospitaldeath', label='Original Baseline (no missingness)')
+no_missing = pd.read_excel("Data Cont/original/no_missing.xlsx")
+no_missing = no_missing.rename(columns={'Unnamed: 0': 'Index'})
+results = []
 
-### ---- SYNTHETIC BASELINE ----
+test_data = pd.read_excel("Data Cont/test_data.xlsx")
+test_data = test_data.rename(columns={'Unnamed: 0': 'Index'})
 
-synthetic_no_missing = pd.read_excel("data/Synthetic/synthetic_no_missing.xlsx")
-log_model, acc, recall, precision, brier, cm = logistic_regression(synthetic_no_missing, test_data, 'hospitaldeath', label='Synthetic Baseline (no missingness)')
+def linear_regression(train, test, target, label):
+    # Handle categorical variables
+    train = pd.get_dummies(train, columns=['stage'])
+    test = pd.get_dummies(test, columns=['stage'])
 
-# model performance summary
-results_to_excel(results)
+    # Align columns in case of mismatched dummies
+    train, test = train.align(test, join='left', axis=1, fill_value=0)
 
+    # Separate predictors and outcome
+    X_train = train.drop(columns=[target, 'Index'])
+    X_test = test.drop(columns=[target, 'Index'])
+    y_train = train[target]
+    y_test = test[target]
 
+    # Train model
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    # Predict
+    y_pred = model.predict(X_test)
+
+    # Evaluation metrics
+    r2 = r2_score(y_test, y_pred)
+    rmse = mean_squared_error(y_test, y_pred, squared=False)
+
+    # Append to results list
+    results.append({
+        'Model': label,
+        'R²': r2,
+        'RMSE': rmse,
+        'Accuracy': None,
+        'Recall': None,
+        'Precision': None,
+        'AUC': None,
+        'Brier Score': None
+    })
+
+    print(f"\nPerformance for {label} (Linear Regression):")
+    print(f"  - R²: {r2:.4f}")
+    print(f"  - RMSE: {rmse:.4f}")
+
+    # Plot predicted vs actual
+    plt.figure(figsize=(6, 5))
+    sns.scatterplot(x=y_test, y=y_pred)
+    plt.xlabel('Actual BP')
+    plt.ylabel('Predicted BP')
+    plt.title(f'Predicted vs Actual BP - {label}')
+    plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
+    plt.grid(True)
+    plt.show()
+
+    return model, r2, rmse
+
+if outcome == 'continuous':
+    # ---- ORIGINAL BASELINE ----
+    lin_model, r2, rmse = linear_regression(no_missing, test_data, 'bp', label='Original Baseline (no missingness)')
+    
+    # ---- SYNTHETIC BASELINE ----
+    synthetic_no_missing = pd.read_excel("Data Cont/Synthetic/synthetic_no_missing.xlsx")
+    lin_model, r2, rmse = linear_regression(synthetic_no_missing, test_data, 'bp', label='Synthetic Baseline (no missingness)')
+    
+    # model performance summary
+    results_to_excel(results)

@@ -10,25 +10,9 @@ import seaborn as sns
 import re
 sns.set_style("whitegrid")
 
-results = pd.read_excel("performance_no_bp.xlsx")
+results = pd.read_excel("model_performance_summary.xlsx")
 #results = pd.read_excel("model_performance_summary.xlsx")
 results = results.dropna()
-
-## BASELINE
-fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-sns.barplot(ax=axes[0], x="Model", y="AUC", data=results[:2])
-axes[0].set_title("AUC")
-axes[0].set_ylim(0.5, 0.7)
-sns.barplot(ax=axes[1], x="Model", y="Accuracy", data=results[:2])
-axes[1].set_title("Accuracy")
-axes[1].set_ylim(0.4, 0.7)
-sns.barplot(ax=axes[2], x="Model", y="Brier Score", data=results[:2])
-axes[2].set_title("Brier Score")
-axes[2].set_ylim(0.1, 0.3)
-plt.tight_layout()
-plt.show()
-
-## MISSINGNESS MODELS
 
 # Filter original and synthetic models
 original_models = results[results['Model'].str.contains('Original')]
@@ -41,8 +25,6 @@ original_models['Model'] = original_models['Model'].apply(clean_model_name)
 synthetic_models['Model'] = synthetic_models['Model'].apply(clean_model_name)
 
 def plots(df, label, metric="AUC", ylim=None):
-    import matplotlib.pyplot as plt
-    import seaborn as sns
 
     baseline = df.iloc[0][metric]  # Get baseline value from the first row
 
@@ -52,7 +34,7 @@ def plots(df, label, metric="AUC", ylim=None):
     indices = [1, 4, 7]
 
     for ax, title, idx in zip(axes, titles, indices):
-        sns.barplot(ax=ax, x="Model", y=metric, data=df[idx:idx+3])
+        sns.barplot(ax=ax, x="Model", y=metric, data=df[idx:idx+3],  hue = "Model", legend = False)
         ax.set_title(f"{label} {title}")
         ax.axhline(baseline, color="red", linestyle="--")
         if ylim:
@@ -73,12 +55,19 @@ def plots(df, label, metric="AUC", ylim=None):
 
     plt.show()
 
+# Identify all metrics (exclude 'Model' column)
+metric_columns = [col for col in results.columns if col not in ("Model","Precision","Recall")]
 
-plots(original_models, "Original", metric="AUC", ylim=(0.5,0.7))
-plots(synthetic_models, "Synthetic", metric="AUC", ylim=(0.5,0.7))
+# Plot baseline metrics for the first two rows
+fig, axes = plt.subplots(1, len(metric_columns), figsize=(6 * len(metric_columns), 6))
+for ax, metric in zip(axes, metric_columns):
+    sns.barplot(ax=ax, x="Model", y=metric, data=results[:2], hue = "Model", legend = False)
+    ax.set_title(metric)
+    ax.set_xlabel("")
+plt.tight_layout()
+plt.show()
 
-plots(original_models, "Original", metric="Accuracy",ylim=(0.4,0.7))
-plots(synthetic_models, "Synthetic", metric="Accuracy",ylim=(0.4,0.7))
-
-plots(original_models, "Original", metric="Brier Score",ylim=(0.1,0.3))
-plots(synthetic_models, "Synthetic",metric="Brier Score",ylim=(0.1,0.3))
+# Plot all metrics dynamically for Original and Synthetic models
+for metric in metric_columns:
+    plots(original_models, "Original", metric=metric)
+    plots(synthetic_models, "Synthetic", metric=metric)

@@ -11,7 +11,7 @@ from scipy.special import expit
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-def generate_patient_data(nsamples=10000, seed=123):
+def generate_patient_data(nsamples=10000, seed=123, outcome = 'binary'):
     np.random.seed(seed)
     
     # Generate Age and Weight
@@ -46,50 +46,63 @@ def generate_patient_data(nsamples=10000, seed=123):
     bp_betas = bp_intercept + np.array([stage_to_bp_beta[s] for s in stage]) + bp_beta_therapy * therapy + bp_beta_weight * weight + bp_beta_age * age
     bp = np.random.normal(loc=bp_betas, scale=10, size=nsamples)
     
-    # Hospital Death (New Binary Variable)
-    death_intercept = -9 #-6
-    death_beta_age = 0 #0.04       # 1 year ≈ OR 1.04
-    death_beta_stage = 0      # Per-stage increase
-    death_beta_bp = 0.04   #0.02     # mmHg increase
-    death_beta_weight = 0  
-    death_beta_therapy = 0   
-    
-    stage_num = np.array([stage_tags.index(s)+1 for s in stage])
-    log_odds = (death_intercept +
-                death_beta_age * age +
-                death_beta_stage * stage_num +
-                death_beta_bp * bp +
-                death_beta_weight * weight +
-                death_beta_therapy * therapy.astype(int))
-    
-    death_prob = expit(log_odds)
-    hospitaldeath = np.random.binomial(1, death_prob)
-    
-    data = pd.DataFrame({
-        'age': age,
-        'weight': weight,
-        'stage': stage,
-        'therapy': therapy,
-        'bp': bp,
-        'hospitaldeath': hospitaldeath
-    })
+    if outcome == 'binary':
+        
+        # Hospital Death (New Binary Variable)
+        death_intercept = -6 #-9 
+        death_beta_age = 0.04 #0       # 1 year ≈ OR 1.04
+        death_beta_stage = 0      # Per-stage increase
+        death_beta_bp = 0.02   #0.04    # mmHg increase
+        death_beta_weight = 0  
+        death_beta_therapy = 0   
+        
+        stage_num = np.array([stage_tags.index(s)+1 for s in stage])
+        log_odds = (death_intercept +
+                    death_beta_age * age +
+                    death_beta_stage * stage_num +
+                    death_beta_bp * bp +
+                    death_beta_weight * weight +
+                    death_beta_therapy * therapy.astype(int))
+        
+        death_prob = expit(log_odds)
+        hospitaldeath = np.random.binomial(1, death_prob)
+
+        data = pd.DataFrame({
+            'age': age,
+            'weight': weight,
+            'stage': stage,
+            'therapy': therapy,
+            'bp': bp,
+            'hospitaldeath': hospitaldeath
+        })
+        
+    else:
+        
+        data = pd.DataFrame({
+            'age': age,
+            'weight': weight,
+            'stage': stage,
+            'therapy': therapy,
+            'bp': bp
+        })
     
     return data
 
 def plot_relationships(data):
     sns.set(style="whitegrid")
     
-    #class balance
-    data['hospitaldeath'].value_counts().plot(kind='bar')
-    plt.xlabel('hospitaldeath')
-    plt.ylabel('Frequency')
-    plt.title('Class Balance of hospdeath')
-    plt.xticks([0, 1], rotation=0)
-    plt.show()
+    if 'hospitaldeath' in data.columns:
+        #class balance
+        data['hospitaldeath'].value_counts().plot(kind='bar')
+        plt.xlabel('hospitaldeath')
+        plt.ylabel('Frequency')
+        plt.title('Class Balance of hospdeath')
+        plt.xticks([0, 1], rotation=0)
+        plt.show()
         
     # Original plots
     plt.figure(figsize=(6, 5))
-    sns.violinplot(x='stage', y='age', data=data, order=['I', 'II', 'III', 'IV'])
+    sns.violinplot(x='stage', y='age', data=data, order=['I', 'II', 'III', 'IV'], hue = 'stage')
     plt.title("Effect of Age on Disease Stage")
     plt.show()
     
@@ -104,47 +117,48 @@ def plot_relationships(data):
     plt.show()
     
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    sns.barplot(x='stage', y='bp', data=data, ax=axes[0], order=['I', 'II', 'III', 'IV'])
+    sns.barplot(x='stage', y='bp', data=data, ax=axes[0], order=['I', 'II', 'III', 'IV'], hue = 'stage')
     axes[0].set_title("Effect of Disease Stage on Blood Pressure")
-    sns.barplot(x='therapy', y='bp', data=data, ax=axes[1])
+    sns.barplot(x='therapy', y='bp', data=data, ax=axes[1], hue= 'therapy', legend=False)
     axes[1].set_title("Effect of Therapy on Blood Pressure")
     plt.show()
     
     
-    # New hospital death plots - optimized layout
-    plt.figure(figsize=(15, 18))  # Adjusted for better spacing
+    if 'hospitaldeath' in data.columns:
+        
+        plt.figure(figsize=(15, 18))
     
-    # --- Plot 1: BP vs Death ---
-    plt.subplot(3, 2, 1)  # Row 1, Col 1
-    sns.regplot(x='bp', y='hospitaldeath', data=data, logistic=True, ci=None,
-                scatter_kws={'alpha':0.2, 'color':'gray'}, line_kws={'color':'red'})
-    plt.title("A) Death Probability by Blood Pressure", pad=20)
-    
-    # --- Plot 2: Age vs Death ---
-    plt.subplot(3, 2, 2)  # Row 1, Col 2
-    sns.regplot(x='age', y='hospitaldeath', data=data, logistic=True, ci=None,
-                scatter_kws={'alpha':0.2, 'color':'gray'}, line_kws={'color':'red'})
-    plt.title("B) Death Probability by Age", pad=20)
-    
-    # --- Plot 3: Stage vs Death ---
-    plt.subplot(3, 2, 3)  # Row 2, Col 1 (span full width)
-    plt.subplots_adjust(wspace=0.3, hspace=0.4)  # Add spacing
-    sns.barplot(x='stage', y='hospitaldeath', data=data, order=['I', 'II', 'III', 'IV'])
-    plt.title("C) Mortality Rate by Stage", pad=20)
-    
-    # --- Plot 4: Therapy vs Death ---
-    plt.subplot(3, 2, 4)  # Row 2, Col 2
-    sns.barplot(x='therapy', y='hospitaldeath', data=data)
-    plt.title("D) Mortality Rate by Therapy", pad=20)
-    
-    # --- Plot 5: Weight vs Death ---
-    plt.subplot(3, 1, 3)  # Row 3 (full width)
-    sns.regplot(x='weight', y='hospitaldeath', data=data, logistic=True, ci=None,
-                scatter_kws={'alpha':0.2, 'color':'gray'}, line_kws={'color':'red'})
-    plt.title("E) Death Probability by Weight", pad=20)
-    
-    plt.tight_layout()
-    plt.show()
+        # --- Plot 1: BP vs Death ---
+        plt.subplot(3, 2, 1)  # Row 1, Col 1
+        sns.regplot(x='bp', y='hospitaldeath', data=data, logistic=True, ci=None,
+                    scatter_kws={'alpha':0.2, 'color':'gray'}, line_kws={'color':'red'})
+        plt.title("A) Death Probability by Blood Pressure", pad=20)
+        
+        # --- Plot 2: Age vs Death ---
+        plt.subplot(3, 2, 2)  # Row 1, Col 2
+        sns.regplot(x='age', y='hospitaldeath', data=data, logistic=True, ci=None,
+                    scatter_kws={'alpha':0.2, 'color':'gray'}, line_kws={'color':'red'})
+        plt.title("B) Death Probability by Age", pad=20)
+        
+        # --- Plot 3: Stage vs Death ---
+        plt.subplot(3, 2, 3)  # Row 2, Col 1 (span full width)
+        plt.subplots_adjust(wspace=0.3, hspace=0.4)  # Add spacing
+        sns.barplot(x='stage', y='hospitaldeath', data=data, order=['I', 'II', 'III', 'IV'], hue='stage', legend = False)
+        plt.title("C) Mortality Rate by Stage", pad=20)
+        
+        # --- Plot 4: Therapy vs Death ---
+        plt.subplot(3, 2, 4)  # Row 2, Col 2
+        sns.barplot(x='therapy', y='hospitaldeath', data=data, hue='therapy', legend = False)
+        plt.title("D) Mortality Rate by Therapy", pad=20)
+        
+        # --- Plot 5: Weight vs Death ---
+        plt.subplot(3, 1, 3)  # Row 3 (full width)
+        sns.regplot(x='weight', y='hospitaldeath', data=data, logistic=True, ci=None,
+                    scatter_kws={'alpha':0.2, 'color':'gray'}, line_kws={'color':'red'})
+        plt.title("E) Death Probability by Weight", pad=20)
+        
+        plt.tight_layout()
+        plt.show()
 
 # Generate and plot data
 data = generate_patient_data(2000)
