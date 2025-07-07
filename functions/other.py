@@ -42,9 +42,12 @@ def results_to_excel(results, output_file='model_performance_summary.xlsx'):
     combined_df.to_excel(output_file, index=False)
 
 
-def format_dataframe(input_df, reference_path="data/test_data.xlsx"):
+def format_and_sample(input_df, data= "Data", reference_path="/test_data.xlsx", nsubset = 200, random_state=123):
+    
+    path = data + reference_path
+    
     # Load and format reference data
-    reference_df = pd.read_excel(reference_path)
+    reference_df = pd.read_excel(path)
     reference_df = reference_df.rename(columns={'Unnamed: 0': 'Index'})
     
     expected_columns = reference_df.columns.tolist()
@@ -60,6 +63,7 @@ def format_dataframe(input_df, reference_path="data/test_data.xlsx"):
     
     # Drop extra columns and reorder
     cleaned_df = input_df[expected_columns].copy()
+    sample = cleaned_df.sample(n=nsubset, random_state = random_state)
     
-    return cleaned_df
+    return sample
 

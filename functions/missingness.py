@@ -19,7 +19,7 @@ def plot_missingness(df, title):
 
 ## MISSING COMPLETELY AT RANDOM
 
-def mcar(df, target_column, missing_rate=0.2, seed=123):
+def mcar(df, target_column, missing_rate=0.3, seed=123):
     
     np.random.seed(seed)
     df_mcar = df.copy()
@@ -38,14 +38,15 @@ def mcar(df, target_column, missing_rate=0.2, seed=123):
     
     df_mcar['missing'] = df_mcar[target_column].isna()
 
-    # Violin plot - age
-    plt.figure(figsize=(8, 6))
-    sns.violinplot(x=df_mcar['missing'], y=df_mcar['age'], inner="quart")
-    plt.xticks([0, 1], ['Observed', 'Missing'])
-    plt.xlabel(f'{target_column} Missingness')
-    plt.ylabel('Age')
-    plt.title('MCAR Violin plot')
-    plt.show()
+
+    # df_mcar['missing'] = df_mcar[target_column].isna()
+    # plt.figure(figsize=(8, 6))
+    # sns.countplot(x='stage', hue='missing', data=df_mcar)
+    # plt.xlabel('stage')
+    # plt.ylabel('Count')
+    # plt.legend(title=f'{target_column} Missingness', labels=['Observed', 'Missing'])
+    # plt.title('MCAR Count Plot')
+    # plt.show()
     
     df_mcar = df_mcar.drop(columns=['missing'])
 
@@ -55,10 +56,10 @@ def mcar(df, target_column, missing_rate=0.2, seed=123):
 #find optimal beta0
 def find_beta_0(df, predictor_column, target_missing_rate, beta_1):
     
-    beta_0 = 0  # initial guess
+    beta_0 = -10  # initial guess
     step_size = 0.01  # Stepsize
     tolerance = 0.001  # Allowable difference
-    
+   
     while True:
         
         # Calculate missingness probability
@@ -83,15 +84,18 @@ def find_beta_0(df, predictor_column, target_missing_rate, beta_1):
 
 ## MISSING AT RANDOM (MAR) 
 
-def mar(df, target_column, predictor_column, target_missing_rate=0.2, beta_1=0.1, seed=123):
+def mar(df, target_column, predictor_column, target_missing_rate=0.3, beta_1=2, seed=123):
     np.random.seed(seed)
     df_mar = df.copy()
     
     # get beta_0 
-    beta_0 = find_beta_0(df, predictor_column, target_missing_rate, beta_1)
+    #beta_0 = find_beta_0(df, 'stage_num', target_missing_rate, beta_1)
+    beta_0 = find_beta_0(df, target_column, target_missing_rate, beta_1)
     
     # get missing probability
-    logit_prob = beta_0 + beta_1 * df[predictor_column]
+    #logit_prob = beta_0 + beta_1 * df['stage_num']
+    logit_prob = beta_0 + beta_1 * df[target_column]
+    
     missing_prob = expit(logit_prob)  # Apply sigmoid function
     
     # Create missing values based on probability
@@ -110,34 +114,25 @@ def mar(df, target_column, predictor_column, target_missing_rate=0.2, beta_1=0.1
     print(f' Actual missing: {missingpr:.2f} %')
     print('\n _____________________________________________ \n')
     
-    # Plot missingness probability function
-    plt.figure(figsize=(10, 6))
-    plt.scatter(df_mar[predictor_column], missing_prob, alpha=0.5)
-    sns.regplot(x=df_mar[predictor_column], y=missing_prob, logistic=True, scatter=False, color='red')
-    plt.xlabel(f'{predictor_column}')  
-    plt.ylabel(f'Probability of missing {target_column}')
-    plt.title(f'MAR (Logistic): Probability of missingness by {predictor_column}')
-    plt.ylim(0, 1)
-    plt.show()
     
-    # Violin plot 
     df_mar['missing'] = df_mar[target_column].isna()
     plt.figure(figsize=(8, 6))
-    sns.violinplot(x=df_mar['missing'], y=df_mar['age'], inner="quart")
-    plt.xticks([0, 1], ['Observed', 'Missing'])
-    plt.xlabel(f'{target_column} Missingness')
-    plt.ylabel('Age')
-    plt.title('MAR Violin plot')
+    sns.countplot(x=predictor_column, hue='missing', data=df_mar)
+    plt.xlabel(predictor_column)
+    plt.ylabel('Count')
+    plt.legend(title=f'{target_column} Missingness', labels=['Observed', 'Missing'])
+    plt.title('MAR Count Plot')
     plt.show()
     
     df_mar = df_mar.drop(columns=['missing'])
+
     
     return df_mar
 
 
 # MISSINGNESS NOT AT RANDOM
 
-def mnar(df, target_column, target_missing_rate=0.2, beta_1=0.1, seed=123):
+def mnar(df, target_column, target_missing_rate=0.3, beta_1=0.1, seed=123):
     np.random.seed(seed)
     df_mnar = df.copy()
     
@@ -176,7 +171,7 @@ def mnar(df, target_column, target_missing_rate=0.2, beta_1=0.1, seed=123):
     # Violin plot 
     df_mnar['missing'] = df_mnar[target_column].isna()
     plt.figure(figsize=(8, 6))
-    sns.violinplot(x=df_mnar['missing'], y=df[target_column], inner="quart") #use old df for y axis! (before missingness)
+    sns.violinplot(x=df_mnar['missing'], y=df[target_column], inner="quart", palette={'C0','orange'}) #use old df for y axis! (before missingness)
     plt.xticks([0, 1], ['Observed', 'Missing'])
     plt.xlabel(f'{target_column} Missingness')
     plt.ylabel(f'{target_column}')

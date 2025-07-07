@@ -10,85 +10,72 @@ import pandas as pd
 from scipy.special import expit
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
-def generate_patient_data(nsamples=10000, seed=123, outcome = 'binary'):
+def generate_patient_data(nsamples=10000, seed=123):
     np.random.seed(seed)
     
-    # Generate Age and Weight
-    age = np.random.normal(loc=50, scale=10, size=nsamples)
-    weight = np.random.normal(loc=70, scale=15, size=nsamples)
-    
-    # Disease Stage (Ordinal, affected by Age)
+    # Generate Stage independently
     stage_tags = ['I', 'II', 'III', 'IV']
-    stage_intercepts = [2, 3, 4]
-    stage_beta_age = -0.1
+    stage_probs = [0.25, 0.25, 0.25, 0.25]  # uniform distribution
+    stage = np.random.choice(stage_tags, size=nsamples, p=stage_probs)
+    stage_num = np.array([stage_tags.index(s) + 1 for s in stage])  # For modeling
     
-    stage_logodds = np.array(stage_intercepts).reshape(len(stage_intercepts),1) + np.vstack([stage_beta_age * age] * len(stage_intercepts))
-    stage_cumprob = expit(stage_logodds)
-    stage_probs = np.hstack([stage_cumprob[0].reshape(-1,1), 
-                            stage_cumprob[1].reshape(-1,1) - stage_cumprob[0].reshape(-1,1),
-                            stage_cumprob[2].reshape(-1,1) - stage_cumprob[1].reshape(-1,1),
-                            1 - stage_cumprob[2].reshape(-1,1)])
-    
-    stage = np.array([np.random.choice(stage_tags, p=prob) for prob in stage_probs])
-    
-    # Therapy (Binary, Random)
+    # Generate Therapy independently
     therapy = np.random.choice([False, True], size=nsamples, p=[0.5, 0.5])
     
-    # Blood Pressure (BP)
-    bp_intercept = 120
-    bp_beta_stage = [0, 10, 20, 30]
-    bp_beta_therapy = -20
-    bp_beta_weight = 0.5
-    bp_beta_age = 1
+    # Generate latent2 (previously Age)
+    latent2 = np.random.normal(loc=60, scale=10, size=nsamples)
+    #latent2 = np.random.gamma(shape=36, scale=1.6667, size=nsamples)
     
-    stage_to_bp_beta = dict(zip(stage_tags, bp_beta_stage))
-    bp_betas = bp_intercept + np.array([stage_to_bp_beta[s] for s in stage]) + bp_beta_therapy * therapy + bp_beta_weight * weight + bp_beta_age * age
-    bp = np.random.normal(loc=bp_betas, scale=10, size=nsamples)
+    # Generate BP independently
+    bp = np.random.normal(loc=120, scale=15, size=nsamples)
     
-    if outcome == 'binary':
-        
-        # Hospital Death (New Binary Variable)
-        death_intercept = -6 #-9 
-        death_beta_age = 0.04 #0       # 1 year ≈ OR 1.04
-        death_beta_stage = 0      # Per-stage increase
-        death_beta_bp = 0.02   #0.04    # mmHg increase
-        death_beta_weight = 0  
-        death_beta_therapy = 0   
-        
-        stage_num = np.array([stage_tags.index(s)+1 for s in stage])
-        log_odds = (death_intercept +
-                    death_beta_age * age +
-                    death_beta_stage * stage_num +
-                    death_beta_bp * bp +
-                    death_beta_weight * weight +
-                    death_beta_therapy * therapy.astype(int))
-        
-        death_prob = expit(log_odds)
-        hospitaldeath = np.random.binomial(1, death_prob)
+    # Generate Weight
+    # Weight based on BP (e.g., weight increases with BP)
+    latent1_intercept = 30
+    latent1_beta_bp = 0.4
+    
+    latent1 = (
+        latent1_intercept +
+        latent1_beta_bp * bp +
+        np.random.normal(0, 5, nsamples)
+    )
 
-        data = pd.DataFrame({
-            'age': age,
-            'weight': weight,
-            'stage': stage,
-            'therapy': therapy,
-            'bp': bp,
-            'hospitaldeath': hospitaldeath
-        })
-        
-    else:
-        
-        data = pd.DataFrame({
-            'age': age,
-            'weight': weight,
-            'stage': stage,
-            'therapy': therapy,
-            'bp': bp
-        })
+    # Define effects of independent predictors on hospitaldeath
+    death_intercept = -24
+    death_beta_stage = 0.05
+    death_beta_bp = 0.2
+    death_beta_therapy = -0.1
+    death_beta_latent2 = 0.04
+    death_beta_latent1 = -0.04
+    
+    log_odds = (
+        death_intercept +
+        death_beta_stage * stage_num +
+        death_beta_bp * bp +
+        death_beta_therapy * therapy.astype(int) +
+        death_beta_latent2 * latent2 +
+        death_beta_latent1 * latent1 +
+        np.random.normal(0, 13, size=len(bp))  # random error
+    )
+    
+    death_prob = expit(log_odds)
+    hospitaldeath = np.random.binomial(1, death_prob)
+    
+    data = pd.DataFrame({
+        'stage': stage,
+        'therapy': therapy,
+        'bp': bp,
+        'hospitaldeath': hospitaldeath,
+        'latent1' : latent1,
+        'latent2': latent2
+    })
     
     return data
 
 def plot_relationships(data):
+    
     sns.set(style="whitegrid")
     
     if 'hospitaldeath' in data.columns:
@@ -101,20 +88,20 @@ def plot_relationships(data):
         plt.show()
         
     # Original plots
-    plt.figure(figsize=(6, 5))
-    sns.violinplot(x='stage', y='age', data=data, order=['I', 'II', 'III', 'IV'], hue = 'stage')
-    plt.title("Effect of Age on Disease Stage")
-    plt.show()
+    # plt.figure(figsize=(6, 5))
+    # sns.violinplot(x='stage', y='age', data=data, order=['I', 'II', 'III', 'IV'], hue = 'stage')
+    # plt.title("Effect of Age on Disease Stage")
+    # plt.show()
     
     plt.figure(figsize=(6, 5))
-    sns.regplot(x='weight', y='bp', data=data, lowess=True, scatter_kws={'alpha':0.5})
-    plt.title("Effect of Weight on Blood Pressure")
+    sns.regplot(x='bp', y='latent1', data=data, lowess=True, scatter_kws={'alpha':0.5})
+    plt.title("Effect of Blood Pressure on latent variable 1")
     plt.show()
     
-    plt.figure(figsize=(6, 5))
-    sns.regplot(x='age', y='bp', data=data, lowess=True, scatter_kws={'alpha':0.5})
-    plt.title("Effect of age on Blood Pressure")
-    plt.show()
+    # plt.figure(figsize=(6, 5))
+    # sns.regplot(x='age', y='bp', data=data, lowess=True, scatter_kws={'alpha':0.5})
+    # plt.title("Effect of age on Blood Pressure")
+    # plt.show()
     
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     sns.barplot(x='stage', y='bp', data=data, ax=axes[0], order=['I', 'II', 'III', 'IV'], hue = 'stage')
@@ -136,9 +123,9 @@ def plot_relationships(data):
         
         # --- Plot 2: Age vs Death ---
         plt.subplot(3, 2, 2)  # Row 1, Col 2
-        sns.regplot(x='age', y='hospitaldeath', data=data, logistic=True, ci=None,
+        sns.regplot(x='latent2', y='hospitaldeath', data=data, logistic=True, ci=None,
                     scatter_kws={'alpha':0.2, 'color':'gray'}, line_kws={'color':'red'})
-        plt.title("B) Death Probability by Age", pad=20)
+        plt.title("B) Death Probability by latent variable 2", pad=20)
         
         # --- Plot 3: Stage vs Death ---
         plt.subplot(3, 2, 3)  # Row 2, Col 1 (span full width)
@@ -153,13 +140,70 @@ def plot_relationships(data):
         
         # --- Plot 5: Weight vs Death ---
         plt.subplot(3, 1, 3)  # Row 3 (full width)
-        sns.regplot(x='weight', y='hospitaldeath', data=data, logistic=True, ci=None,
+        sns.regplot(x='latent1', y='hospitaldeath', data=data, logistic=True, ci=None,
                     scatter_kws={'alpha':0.2, 'color':'gray'}, line_kws={'color':'red'})
-        plt.title("E) Death Probability by Weight", pad=20)
+        plt.title("E) Death Probability by latent variable 1", pad=20)
         
         plt.tight_layout()
         plt.show()
 
 # Generate and plot data
-data = generate_patient_data(2000)
+data = generate_patient_data(1000, seed = 123)
 plot_relationships(data)
+
+
+# SEPERABILTY?
+
+train_idx, test_idx = train_test_split(data.index, test_size=0.2, random_state=123)
+train_data = data.loc[train_idx]
+test_data = data.loc[test_idx]
+
+stage_order = {'I': 1, 'II': 2, 'III': 3, 'IV': 4}
+train_data['stage'] = pd.Categorical(train_data['stage'], categories=stage_order.keys(), ordered=True)
+# If you need the numeric version (e.g., for multiplication), extract codes + 1
+train_data['stage_num'] = train_data['stage'].cat.codes + 1
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+
+train_data = train_data.drop(columns=['stage'])
+
+# Features en target
+X = train_data.drop(columns=['hospitaldeath','latent1','latent2'])
+y = train_data['hospitaldeath']
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Model fit
+model = LogisticRegression(solver='liblinear')  # 'liblinear' is stabieler bij kleine datasets
+model.fit(X_scaled, y)
+
+# Coëfficiënts
+print(pd.Series(model.coef_[0], index=X.columns).sort_values())
+
+probs = model.predict_proba(X_scaled)[:, 1]
+
+plt.figure(figsize=(8,4))
+sns.histplot(probs, bins=20, kde=False)
+plt.title("Histogram of hospdeath predictions")
+plt.xlabel("Predicted probability")
+plt.ylabel("# observations")
+plt.show()
+
+df = train_data.copy()
+df['hospitaldeath'] = y
+print(df.groupby('hospitaldeath').mean())
+
+from sklearn.decomposition import PCA
+
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+plt.figure(figsize=(6,6))
+sns.scatterplot(x=X_pca[:,0], y=X_pca[:,1], hue=y, palette='coolwarm', alpha=0.6)
+plt.title("PCA van predictors gekleurd op hospdeath")
+plt.xlabel("PC1")
+plt.ylabel("PC2")
+plt.legend(title="hospdeath")
+plt.show()

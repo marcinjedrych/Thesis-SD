@@ -1,13 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Mar 24 12:39:12 2025
 
-Baseline models
-
-@author: Marcin
-"""
-
-outcome = 'continuous' # 'binary' or 'continuous'
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -16,32 +7,34 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, recall_score, precision_score, confusion_matrix
 from functions.other import results_to_excel
 from sklearn.calibration import calibration_curve
-from sklearn.metrics import brier_score_loss
-from sklearn.metrics import roc_auc_score 
-from sklearn.metrics import roc_curve
+from sklearn.metrics import brier_score_loss, roc_auc_score, roc_curve
 
-no_missing = pd.read_excel("data/original/no_missing.xlsx")
+data = 'Data'
+
+# Load data
+no_missing = pd.read_excel(f"{data}/original/no_missing.xlsx")
 no_missing = no_missing.rename(columns={'Unnamed: 0': 'Index'})
 
-test_data = pd.read_excel("data/test_data.xlsx")
+test_data = pd.read_excel(f"{data}/test_data.xlsx")
 test_data = test_data.rename(columns={'Unnamed: 0': 'Index'})
 
-#empty list to store results
-results = []
+# Lists to store all results and the subset for Excel
+results4plot = []
 
-def logistic_regression(train, test, target, label):
-    
+def logistic_regression(train, test, target, label=None, exclude_vars=None):
+    if exclude_vars is None:
+        exclude_vars = []
+
     # Handle categorical variables
     train = pd.get_dummies(train, columns=['stage'])
     test = pd.get_dummies(test, columns=['stage'])
-    
-    # Separate predictors (X) and outcome (y)
-    X_train = train.drop(columns=[target])
-    X_train = X_train.drop(columns=['Index'])
-    print(X_train.columns)
-    X_test = test.drop(columns=[target])
-    X_test = X_test.drop(columns=['Index'])
-    
+
+    # Align columns
+    train, test = train.align(test, join='left', axis=1, fill_value=0)
+
+    # Define predictors and target
+    X_train = train.drop(columns=[target, 'Index'] + exclude_vars)
+    X_test = test.drop(columns=[target, 'Index'] + exclude_vars)
     y_train = train[target]
     y_test = test[target]
 
@@ -49,160 +42,118 @@ def logistic_regression(train, test, target, label):
     model = LogisticRegression(max_iter=1000, random_state=123)
     model.fit(X_train, y_train)
 
-    # Predictions
     y_pred = model.predict(X_test)
-    y_prob = model.predict_proba(X_test)[:, 1]  # probability of class 1
+    y_prob = model.predict_proba(X_test)[:, 1]
 
-    # discrimination metrics 
+    # Metrics
     acc = accuracy_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    precision = precision_score(y_test,y_pred)
-    auc = roc_auc_score(y_test, y_prob)  
-    
-    fpr, tpr, _ = roc_curve(y_test, y_prob)  # ROC curve values
-    conf_matrix = confusion_matrix(y_test, y_pred)
-    
-    # Calibration metrics
-    brier = brier_score_loss(y_test, y_prob) # mean squared difference between predicted probabilities and actual binary outcomes.
-    prob_true, prob_pred = calibration_curve(y_test, y_prob, n_bins=10)
-    
-    # Save results
-    results.append({
+    recall = recall_score(y_test, y_pred, zero_division=0)
+    precision = precision_score(y_test, y_pred, zero_division=0)
+    auc = roc_auc_score(y_test, y_prob)
+    brier = brier_score_loss(y_test, y_prob)
+
+    result_row = {
         'Model': label,
         'Accuracy': acc,
         'Recall': recall,
         'Precision': precision,
         'AUC': auc,
         'Brier Score': brier
-    })
-    
-    # Output
-    print(f"\nPerformance for {label}:")
-    print(f"  - Accuracy: {acc:.4f}")
-    print(f"  - Recall: {recall:.4f}")
-    print(f"  - Precision: {precision:.4f}")
-    print(f"  - AUC: {auc:.4f}")
-    print(f"  - Brier Score: {brier:.4f}")
-    print("  - Confusion Matrix:")
-        
-    # Plot confusion matrix
-    plt.figure(figsize=(6,5))
-    sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues')
-    plt.xlabel('Predicted')
-    plt.ylabel('Actual')
-    plt.title(f'Confusion Matrix for {label}')
-    plt.show()
-    
-    # ROC Curve
-    plt.figure(figsize=(6,5))
-    plt.plot(fpr, tpr, label=f'AUC = {auc:.2f}')
-    plt.plot([0, 1], [0, 1], linestyle='--', color='gray')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title(f'ROC Curve for {label}')
-    plt.legend(loc='lower right')
+    }
+
+    results4plot.append(result_row)
+    return result_row
+
+"""1.) BP vs. no BP plot """
+# Run both with and without 'bp'
+conditions = [('with bp', ['latent1', 'latent2']), ('without bp', ['latent1', 'latent2','bp'])]
+synthetic_no_missing = pd.read_excel(f"{data}/Synthetic/synthetic_no_missing.xlsx")
+
+for condition_name, exclude in conditions:
+    # Run original data
+    result_orig = logistic_regression(no_missing, test_data, 'hospitaldeath',
+                                      label=f'Original ({condition_name})',
+                                      exclude_vars=exclude)
+    # Run synthetic data
+    result_synth = logistic_regression(synthetic_no_missing, test_data, 'hospitaldeath',
+                                        label=f'Synthetic ({condition_name})',
+                                        exclude_vars=exclude)
+
+
+# Create plot DataFrame from all results
+results_df = pd.DataFrame(results4plot)
+
+# Melt for plotting
+melted = pd.melt(results_df, id_vars='Model',
+                 value_vars=['Accuracy', 'AUC', 'Recall', 'Precision', 'Brier Score'],
+                 var_name='Metric', value_name='Score')
+
+# Extract metadata from Model string
+melted['Data'] = melted['Model'].str.extract(r'^(Original|Synthetic)')
+melted['Condition'] = melted['Model'].str.extract(r'\((.*?)\)')
+
+# Plot
+sns.set(style="whitegrid")
+for data_type in ['Original', 'Synthetic']:
+    plt.figure(figsize=(8, 5))
+    subset = melted[melted['Data'] == data_type]
+    sns.lineplot(data=subset, x='Condition', y='Score', hue='Metric', marker='o')
+    plt.title(f'Model Performance ({data_type})')
+    plt.ylabel("Score")
+    plt.xlabel("Condition")
+    plt.ylim(0, 1)
     plt.grid(True)
+    plt.tight_layout()
     plt.show()
 
+
+"""BASELINE RESULTS"""
+
+results, results_syn = [], []
+synthetic_no_missing = pd.read_excel(f"{data}/Synthetic/synthetic_no_missing.xlsx")
+n_iter = 50
+subset_size = 200
+exclude = ['latent1', 'latent2']
+
+for i in range(n_iter):
     
-    # Calibration plot: predicted probabilities vs. observed frequencies, perfectly calibrated model lies on the diagonal (y = x).
-    plt.figure(figsize=(6,5))
-    plt.plot(prob_pred, prob_true, marker='o', label='Model')
-    plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Perfectly Calibrated')
-    plt.xlabel('Mean Predicted Probability')
-    plt.ylabel('Actual hospitaldeath = 1')
-    plt.title(f'Calibration Curve for {label}')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-    return model, acc, recall, precision, brier, conf_matrix
-
-if outcome == 'binary':
-    ### ---- ORIGINAL BASELINE ----
+    train_sample = no_missing.sample(n=subset_size, random_state=i)
+    train_sample2 = synthetic_no_missing.sample(n=subset_size, random_state=i)
     
-    log_model, acc, recall, precision, brier, cm = logistic_regression(no_missing, test_data, 'hospitaldeath', label='Original Baseline (no missingness)')
+    # Run original data 
+    result_orig = logistic_regression(train_sample, test_data, 'hospitaldeath',
+                                      exclude_vars=exclude)
+    # Run synthetic data
+    result_synth = logistic_regression(train_sample2, test_data, 'hospitaldeath',
+                                        exclude_vars=exclude)
     
-    ### ---- SYNTHETIC BASELINE ----
-    
-    synthetic_no_missing = pd.read_excel("data/Synthetic/synthetic_no_missing.xlsx")
-    log_model, acc, recall, precision, brier, cm = logistic_regression(synthetic_no_missing, test_data, 'hospitaldeath', label='Synthetic Baseline (no missingness)')
-    
-    # model performance summary
-    results_to_excel(results)
+    # Store all
+    results.append(result_orig)
+    results_syn.append(result_synth)
 
-### CONTINUOUS
- 
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, r2_score
+selected_metrics = ['Model','Accuracy', 'Recall', 'Precision', 'AUC', 'Brier Score']
 
-no_missing = pd.read_excel("Data Cont/original/no_missing.xlsx")
-no_missing = no_missing.rename(columns={'Unnamed: 0': 'Index'})
-results = []
+metrics_df = pd.DataFrame(results)
+metrics_df_syn = pd.DataFrame(results_syn)
 
-test_data = pd.read_excel("Data Cont/test_data.xlsx")
-test_data = test_data.rename(columns={'Unnamed: 0': 'Index'})
+mean_metrics = metrics_df[selected_metrics].mean().to_frame().T
+sd_metrics = metrics_df[selected_metrics].std().to_frame().T
+mean_metrics_syn = metrics_df_syn[selected_metrics].mean().to_frame().T
+sd_metrics_syn = metrics_df_syn[selected_metrics].std().to_frame().T
 
-def linear_regression(train, test, target, label):
-    # Handle categorical variables
-    train = pd.get_dummies(train, columns=['stage'])
-    test = pd.get_dummies(test, columns=['stage'])
 
-    # Align columns in case of mismatched dummies
-    train, test = train.align(test, join='left', axis=1, fill_value=0)
+mean_metrics['Model'] = 'Original Baseline'
+sd_metrics['Model'] = 'Original Baseline'
+mean_metrics_syn['Model'] = 'Synthetic Baseline'
+sd_metrics_syn['Model'] = 'Synthetic Baseline'
 
-    # Separate predictors and outcome
-    X_train = train.drop(columns=[target, 'Index'])
-    X_test = test.drop(columns=[target, 'Index'])
-    y_train = train[target]
-    y_test = test[target]
+mean_metrics = mean_metrics.round(3)
+sd_metrics = sd_metrics.round(3)
+mean_metrics_syn = mean_metrics_syn.round(3)
+sd_metrics_syn = sd_metrics_syn.round(3)
 
-    # Train model
-    model = LinearRegression()
-    model.fit(X_train, y_train)
 
-    # Predict
-    y_pred = model.predict(X_test)
-
-    # Evaluation metrics
-    r2 = r2_score(y_test, y_pred)
-    rmse = mean_squared_error(y_test, y_pred, squared=False)
-
-    # Append to results list
-    results.append({
-        'Model': label,
-        'R²': r2,
-        'RMSE': rmse,
-        'Accuracy': None,
-        'Recall': None,
-        'Precision': None,
-        'AUC': None,
-        'Brier Score': None
-    })
-
-    print(f"\nPerformance for {label} (Linear Regression):")
-    print(f"  - R²: {r2:.4f}")
-    print(f"  - RMSE: {rmse:.4f}")
-
-    # Plot predicted vs actual
-    plt.figure(figsize=(6, 5))
-    sns.scatterplot(x=y_test, y=y_pred)
-    plt.xlabel('Actual BP')
-    plt.ylabel('Predicted BP')
-    plt.title(f'Predicted vs Actual BP - {label}')
-    plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
-    plt.grid(True)
-    plt.show()
-
-    return model, r2, rmse
-
-if outcome == 'continuous':
-    # ---- ORIGINAL BASELINE ----
-    lin_model, r2, rmse = linear_regression(no_missing, test_data, 'bp', label='Original Baseline (no missingness)')
-    
-    # ---- SYNTHETIC BASELINE ----
-    synthetic_no_missing = pd.read_excel("Data Cont/Synthetic/synthetic_no_missing.xlsx")
-    lin_model, r2, rmse = linear_regression(synthetic_no_missing, test_data, 'bp', label='Synthetic Baseline (no missingness)')
-    
-    # model performance summary
-    results_to_excel(results)
+results_to_excel(pd.DataFrame(mean_metrics), output_file='metrics_mean.xlsx')
+results_to_excel(pd.DataFrame(sd_metrics), output_file='metrics_SD.xlsx')
+results_to_excel(pd.DataFrame(mean_metrics_syn), output_file='metrics_mean.xlsx')
+results_to_excel(pd.DataFrame(sd_metrics_syn), output_file='metrics_SD.xlsx')

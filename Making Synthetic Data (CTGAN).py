@@ -11,8 +11,7 @@ import pandas as pd
 from functions.ctgan_syn import generate_synthetic_data
 
 import os
-
-root = 'Data Cont'  # or choose another folder
+root = 'Data'  # or choose another folder
 
 # 1. Process 'no_missing.xlsx' and save synthetic data
 df = pd.read_excel(f"{root}/Original/no_missing.xlsx")
