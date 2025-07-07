@@ -4,36 +4,36 @@ This repository contains the code and resources for my Master's thesis in Statis
 
 ## Overview
 
-The goal of this thesis is to evaluate the effectiveness of various missing data handling techniques—Complete Case Analysis (CCA), Multiple Imputation (MI), and the Indicator Method—when applied before synthetic data generation. Synthetic datasets are created using CTGAN, and the performance of models trained on synthetic data is compared against those trained on original datasets.
+The goal of this thesis is to evaluate the effectiveness of various missing data handling techniques: Complete Case Analysis (CCA), Multiple Imputation (MI), and the Indicator Method. This work aims to invistigate this particulary in the context of synthetic data generation. Synthetic datasets are created using CTGAN, and the performance of models trained on synthetic data is compared against those trained on original datasets.
 
 ## Repository Structure
 
 ### Main Scripts
 
-1. **1. Simulation Missing Data.py**  
+**1. Simulation Missing Data.py**  
    - Simulates a dataset using predefined functions (`generate.py`)  
    - Splits data into training and test sets without missingness  
    - Introduces missing data under MCAR, MAR, and MNAR mechanisms (`missingness.py`)  
    - Applies missing data handling strategies: CCA, MI, and Indicator (`strategies.py`)  
    - Saves the generated datasets in `Data/Original/`
 
-2. **2. Making Synthetic Data (CTGAN).py**  
+**2. Making Synthetic Data (CTGAN).py**  
    - Trains CTGAN models to generate synthetic datasets based on the incomplete training sets (`ctgan_syn.py`)  
    - Saves synthetic datasets in `Data/Synthetic/`
 
-3. **3. Baseline model.py**  
+**3. Baseline model.py**  
    - Trains logistic regression models on complete original and synthetic datasets  
    - Compares model performance between synthetic and original data
 
-4. **4. Missing data models.py**  
+**4. Missing data models.py**  
    - Trains logistic regression models on datasets with missing data (handled by CCA, MI, or Indicator)  
    - Evaluates model performance on both original and synthetic datasets
 
-5. **5. Performance plots.py**  
+**5. Performance plots.py**  
    - Visualizes model performance metrics (e.g., AUC, accuracy)  
    - Compares results across different missingness types and handling strategies
 
-6. **6. Use case.py**  
+**6. Use case.py**  
    - Applies the full pipeline on a real-world use case (if applicable)
 
 ### functions/ Folder
@@ -44,23 +44,7 @@ This folder contains modular helper scripts used across the pipeline:
 - **generate.py** – Functions to simulate the initial synthetic population  
 - **missingness.py** – Implements MCAR, MAR, and MNAR missing data mechanisms  
 - **strategies.py** – Missing data handling strategies (CCA, MI, Indicator Method)  
-- **other.py** – Utility functions for formatting, evaluation, and plotting
-
-## How to Run
-
-1. Simulate data and introduce missingness:
-python "1. Simulation Missing Data.py"
-
-2. Generate synthetic datasets with CTGAN:
-python "2. Making Synthetic Data (CTGAN).py"
-
-
-3. Train and evaluate models:
-python "3. Baseline model.py"
-python "4. Missing data models.py"
-
-4. Visualize performance:
-python "5. Performance plots.py"
+- **other.py** – Utility functions for formatting, evaluation, plotting
 
 ## Contact
 
