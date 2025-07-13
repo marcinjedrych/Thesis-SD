@@ -10,6 +10,7 @@ MCAR models
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, recall_score, precision_score, confusion_matrix
@@ -18,7 +19,7 @@ from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
-from functions.strategies import missing_indicator
+from functions.strategies import missing_indicator, ensemble
 
 plots = False
 data = 'Data'
@@ -127,39 +128,64 @@ test_data = test_data.rename(columns={'Unnamed: 0': 'Index'})
 
 # Define your target variable
 target_variable = 'hospitaldeath'
-
-#synthetic_no_missing = pd.read_excel(f"{data}/Synthetic/synthetic_no_missing.xlsx")
-#baseline_len = len(pd.read_excel(f"{data}/Original/no_missing.xlsx"))
-
 n_iter = 50
 subset_size = 200
 cca_subset_size = round(0.45*200)
+mi_path = f"{data}/Original/Multiple Imputation/"
+mi_path2 = f"{data}/Original/Multiple Imputation/"
 
 # MCAR - Original
 original_mcar_cca = pd.read_excel(f"{data}/Original/Complete Case Analysis/bp_mcar_cca.xlsx")
-original_mcar_mi = pd.read_excel(f"{data}/Original/Multiple Imputation/bp_mcar_mi.xlsx")
+
+excel_files = [f for f in os.listdir(mi_path) if f.lower().endswith(('.xlsx', '.xls')) and 'mcar' in f.lower()]
+mcar_dataframes = [pd.read_excel(os.path.join(mi_path, file)) for file in excel_files]
+#original_mcar_mi = pd.read_excel(f"{data}/Original/Multiple Imputation/bp_mcar_mi.xlsx")
+
 original_mcar_na = pd.read_excel(f"{data}/Original/Learned NA/bp_mcar.xlsx")
+
 # MCAR- Synthetic
 syn_mcar_cca = pd.read_excel(f"{data}/Synthetic/Complete Case Analysis/bp_mcar_cca.xlsx")
-syn_mcar_mi = pd.read_excel(f"{data}/Synthetic/Multiple Imputation/bp_mcar_mi.xlsx")
+
+excel_files = [f for f in os.listdir(mi_path2) if f.lower().endswith(('.xlsx', '.xls')) and 'mcar' in f.lower()]
+mcar_syn_dataframes = [pd.read_excel(os.path.join(mi_path2, file)) for file in excel_files]
+#syn_mcar_mi = pd.read_excel(f"{data}/Synthetic/Multiple Imputation/bp_mcar_mi.xlsx")
+
 syn_mcar_na = pd.read_excel(f"{data}/Synthetic/Learned NA/bp_mcar.xlsx")
 
 # MAR - Original
 original_mar_cca = pd.read_excel(f"{data}/Original/Complete Case Analysis/bp_mar_cca.xlsx")
-original_mar_mi = pd.read_excel(f"{data}/Original/Multiple Imputation/bp_mar_mi.xlsx")
+
+excel_files = [f for f in os.listdir(mi_path) if f.lower().endswith(('.xlsx', '.xls')) and 'mar' in f.lower()]
+mar_dataframes = [pd.read_excel(os.path.join(mi_path, file)) for file in excel_files]
+#original_mar_mi = pd.read_excel(f"{data}/Original/Multiple Imputation/bp_mar_mi.xlsx")
+
 original_mar_na = pd.read_excel(f"{data}/Original/Learned NA/bp_mar.xlsx")
+
 # MAR - Synthetic
 syn_mar_cca = pd.read_excel(f"{data}/Synthetic/Complete Case Analysis/bp_mar_cca.xlsx")
-syn_mar_mi = pd.read_excel(f"{data}/Synthetic/Multiple Imputation/bp_mar_mi.xlsx")
+
+excel_files = [f for f in os.listdir(mi_path2) if f.lower().endswith(('.xlsx', '.xls')) and 'mar' in f.lower()]
+mar_syn_dataframes = [pd.read_excel(os.path.join(mi_path2, file)) for file in excel_files]
+#syn_mar_mi = pd.read_excel(f"{data}/Synthetic/Multiple Imputation/bp_mar_mi.xlsx")
+
 syn_mar_na = pd.read_excel(f"{data}/Synthetic/Learned NA/bp_mar.xlsx")
 
 # MNAR - Original
 original_mnar_cca = pd.read_excel(f"{data}/Original/Complete Case Analysis/bp_mnar_cca.xlsx")
-original_mnar_mi = pd.read_excel(f"{data}/Original/Multiple Imputation/bp_mnar_mi.xlsx")
+
+excel_files = [f for f in os.listdir(mi_path) if f.lower().endswith(('.xlsx', '.xls')) and 'mnar' in f.lower()]
+mnar_dataframes = [pd.read_excel(os.path.join(mi_path, file)) for file in excel_files]
+#original_mnar_mi = pd.read_excel(f"{data}/Original/Multiple Imputation/bp_mnar_mi.xlsx")
+
 original_mnar_na = pd.read_excel(f"{data}/Original/Learned NA/bp_mnar.xlsx")
+
 # MNAR - Synthetic
 syn_mnar_cca = pd.read_excel(f"{data}/Synthetic/Complete Case Analysis/bp_mnar_cca.xlsx")
-syn_mnar_mi = pd.read_excel(f"{data}/Synthetic/Multiple Imputation/bp_mnar_mi.xlsx")
+
+excel_files = [f for f in os.listdir(mi_path2) if f.lower().endswith(('.xlsx', '.xls')) and 'mnar' in f.lower()]
+mnar_syn_dataframes = [pd.read_excel(os.path.join(mi_path2, file)) for file in excel_files]
+#syn_mnar_mi = pd.read_excel(f"{data}/Synthetic/Multiple Imputation/bp_mnar_mi.xlsx")
+
 syn_mnar_na = pd.read_excel(f"{data}/Synthetic/Learned NA/bp_mnar.xlsx")
 
 baseline_len = len(pd.read_excel(f"{data}/Original/no_missing.xlsx"))
@@ -175,60 +201,90 @@ for i in range(n_iter):
     
     # MCAR - original
     original_mcar_cca_sample = format_and_sample(original_mcar_cca, data = data, nsubset = cca_subset_size, random_state=i)
-    original_mcar_mi_sample = format_and_sample(original_mcar_mi, data = data, nsubset = subset_size, random_state=i)
+    original_mcar_mi = []
+    for df in mcar_dataframes:
+        sample = format_and_sample(df, data = data, nsubset = subset_size, random_state=i)
+        original_mcar_mi.append(sample)
+    #original_mcar_mi_sample = format_and_sample(original_mcar_mi, data = data, nsubset = subset_size, random_state=i)
     original_mcar_na_sample = format_and_sample(original_mcar_na, data = data, nsubset = subset_size, random_state=i)
     
     # MCAR - Synthetic
     syn_mcar_cca_sample = format_and_sample(syn_mcar_cca, data = data, nsubset = cca_subset_size, random_state=i)
-    syn_mcar_mi_sample = format_and_sample(syn_mcar_mi, data = data, nsubset = subset_size, random_state=i)
+    syn_mcar_mi = []
+    for df in mcar_syn_dataframes:
+        sample = format_and_sample(df, data = data, nsubset = subset_size, random_state=i)
+        syn_mcar_mi.append(sample)
+    #syn_mcar_mi_sample = format_and_sample(syn_mcar_mi, data = data, nsubset = subset_size, random_state=i)
     syn_mcar_na_sample = format_and_sample(syn_mcar_na, data = data, nsubset = subset_size, random_state=i)
     
     # MAR - Original
     original_mar_cca_sample = format_and_sample(original_mar_cca, data = data, nsubset = cca_subset_size, random_state=i)
-    original_mar_mi_sample = format_and_sample(original_mar_mi, data = data, nsubset = subset_size, random_state=i)
+    original_mar_mi = []
+    for df in mar_dataframes:
+        sample = format_and_sample(df, data = data, nsubset = subset_size, random_state=i)
+        original_mar_mi.append(sample)
+    #original_mar_mi_sample = format_and_sample(original_mar_mi, data = data, nsubset = subset_size, random_state=i)
     original_mar_na_sample = format_and_sample(original_mar_na, data = data, nsubset = subset_size, random_state=i)
     
     # MAR - Synthetic
     syn_mar_cca_sample = format_and_sample(syn_mar_cca, data = data, nsubset = cca_subset_size, random_state=i)
-    syn_mar_mi_sample = format_and_sample(syn_mar_mi, data = data, nsubset = subset_size, random_state=i)
+    syn_mar_mi = []
+    for df in mar_syn_dataframes:
+        sample = format_and_sample(df, data = data, nsubset = subset_size, random_state=i)
+        syn_mar_mi.append(sample)
+    #syn_mar_mi_sample = format_and_sample(syn_mar_mi, data = data, nsubset = subset_size, random_state=i)
     syn_mar_na_sample = format_and_sample(syn_mar_na, data = data, nsubset = subset_size, random_state=i)
     
     # MNAR - Original
     original_mnar_cca_sample = format_and_sample(original_mnar_cca, data = data, nsubset = cca_subset_size, random_state=i)
-    original_mnar_mi_sample = format_and_sample(original_mnar_mi, data = data, nsubset = subset_size, random_state=i)
+    original_mnar_mi = []
+    for df in mnar_dataframes:
+        sample = format_and_sample(df, data = data, nsubset = subset_size, random_state=i)
+        original_mnar_mi.append(sample)
+    #original_mnar_mi_sample = format_and_sample(original_mnar_mi, data = data, nsubset = subset_size, random_state=i)
     original_mnar_na_sample = format_and_sample(original_mnar_na, data = data, nsubset = subset_size, random_state=i)
     
     # MNAR - Synthetic
     syn_mnar_cca_sample = format_and_sample(syn_mnar_cca, data = data, nsubset = cca_subset_size, random_state=i)
-    syn_mnar_mi_sample = format_and_sample(syn_mnar_mi, data = data, nsubset = subset_size, random_state=i)
+    syn_mnar_mi = []
+    for df in mnar_syn_dataframes:
+        sample = format_and_sample(df, data = data, nsubset = subset_size, random_state=i)
+        syn_mnar_mi.append(sample)
+    #syn_mnar_mi_sample = format_and_sample(syn_mnar_mi, data = data, nsubset = subset_size, random_state=i)
     syn_mnar_na_sample = format_and_sample(syn_mnar_na, data = data, nsubset = subset_size, random_state=i)
 
     # Run logistic regression for each 
     # MCAR
     logistic_regression(original_mcar_cca_sample, test_data, target=target_variable, label="Original CCA (MCAR)")
-    logistic_regression(original_mcar_mi_sample, test_data, target=target_variable, label="Original MI (MCAR)")
+    ensemble(original_mcar_mi, test_data, target=target_variable)
+    #logistic_regression(original_mcar_mi_sample, test_data, target=target_variable, label="Original MI (MCAR)")
     logistic_regression(original_mcar_na_sample, test_data, target=target_variable, label="Original Learned NA (MCAR)", NA = True)
     
     logistic_regression(syn_mcar_cca_sample, test_data, target=target_variable, label="Synthetic CCA (MCAR)")
-    logistic_regression(syn_mcar_mi_sample, test_data, target=target_variable, label="Synthetic MI (MCAR)")
+    #logistic_regression(syn_mcar_mi_sample, test_data, target=target_variable, label="Synthetic MI (MCAR)")
+    ensemble(syn_mcar_mi, test_data, target=target_variable)
     logistic_regression(syn_mcar_na_sample, test_data, target=target_variable, label="Synthetic Learned NA (MCAR)", NA = True)
     
     # MAR
     logistic_regression(original_mar_cca_sample, test_data, target=target_variable, label="Original CCA (MAR)")
-    logistic_regression(original_mar_mi_sample, test_data, target=target_variable, label="Original MI (MAR)")
+    #logistic_regression(original_mar_mi_sample, test_data, target=target_variable, label="Original MI (MAR)")
+    ensemble(original_mar_mi, test_data, target=target_variable)
     logistic_regression(original_mar_na_sample, test_data, target=target_variable, label="Original Learned NA (MAR)", NA = True)
     
     logistic_regression(syn_mar_cca_sample, test_data, target=target_variable, label="Synthetic CCA (MAR)")
-    logistic_regression(syn_mar_mi_sample, test_data, target=target_variable, label="Synthetic MI (MAR)")
+    #logistic_regression(syn_mar_mi_sample, test_data, target=target_variable, label="Synthetic MI (MAR)")
+    ensemble(syn_mar_mi, test_data, target=target_variable)
     logistic_regression(syn_mar_na_sample, test_data, target=target_variable, label="Synthetic Learned NA (MAR)", NA = True)
     
     # MNAR
     logistic_regression(original_mnar_cca_sample, test_data, target=target_variable, label="Original CCA (MNAR)")
-    logistic_regression(original_mnar_mi_sample, test_data, target=target_variable, label="Original MI (MNAR)")
-    results = logistic_regression(original_mnar_na_sample, test_data, target=target_variable, label="Original Learned NA (MNAR)", NA = True)
+    #logistic_regression(original_mnar_mi_sample, test_data, target=target_variable, label="Original MI (MNAR)")
+    ensemble(original_mnar_mi, test_data, target=target_variable)
+    logistic_regression(original_mnar_na_sample, test_data, target=target_variable, label="Original Learned NA (MNAR)", NA = True)
     
     logistic_regression(syn_mnar_cca_sample, test_data, target=target_variable, label="Synthetic CCA (MNAR)")
-    logistic_regression(syn_mnar_mi_sample, test_data, target=target_variable, label="Synthetic MI (MNAR)")
+    #logistic_regression(syn_mnar_mi_sample, test_data, target=target_variable, label="Synthetic MI (MNAR)")
+    ensemble(syn_mnar_mi, test_data, target=target_variable)
     logistic_regression(syn_mnar_na_sample, test_data, target=target_variable, label="Synthetic Learned NA (MNAR)", NA = True)
 
 
@@ -245,7 +301,7 @@ try:
     old_metrics = pd.read_excel('metrics_mean.xlsx')
     old_metrics_sd = pd.read_excel('metrics_sd.xlsx')
     grouped_mean = pd.concat([old_metrics, grouped_mean]).drop_duplicates()
-    grouped_sd = pd.concat([old_metrics, grouped_sd]).drop_duplicates()
+    grouped_sd = pd.concat([old_metrics_sd, grouped_sd]).drop_duplicates()
 except FileNotFoundError:
     pass
 

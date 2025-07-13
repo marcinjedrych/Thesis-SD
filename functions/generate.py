@@ -29,7 +29,7 @@ def generate_patient_data(nsamples=10000, seed=123):
     #latent2 = np.random.gamma(shape=36, scale=1.6667, size=nsamples)
     
     # Generate BP independently
-    bp = np.random.normal(loc=120, scale=15, size=nsamples)
+    bp = np.random.normal(loc=120, scale=10, size=nsamples)
     
     # Generate Weight
     # Weight based on BP (e.g., weight increases with BP)
@@ -39,14 +39,14 @@ def generate_patient_data(nsamples=10000, seed=123):
     latent1 = (
         latent1_intercept +
         latent1_beta_bp * bp +
-        np.random.normal(0, 5, nsamples)
+        np.random.normal(0, 15, nsamples)
     )
 
     # Define effects of independent predictors on hospitaldeath
-    death_intercept = -24
-    death_beta_stage = 0.05
-    death_beta_bp = 0.2
-    death_beta_therapy = -0.1
+    death_intercept = -36
+    death_beta_stage = 0.27
+    death_beta_bp = 0.3
+    death_beta_therapy = -0.2
     death_beta_latent2 = 0.04
     death_beta_latent1 = -0.04
     
@@ -93,22 +93,22 @@ def plot_relationships(data):
     # plt.title("Effect of Age on Disease Stage")
     # plt.show()
     
-    plt.figure(figsize=(6, 5))
-    sns.regplot(x='bp', y='latent1', data=data, lowess=True, scatter_kws={'alpha':0.5})
-    plt.title("Effect of Blood Pressure on latent variable 1")
-    plt.show()
+    # plt.figure(figsize=(6, 5))
+    # sns.regplot(x='bp', y='latent1', data=data, lowess=True, scatter_kws={'alpha':0.5})
+    # plt.title("Effect of Blood Pressure on latent variable 1")
+    # plt.show()
     
     # plt.figure(figsize=(6, 5))
     # sns.regplot(x='age', y='bp', data=data, lowess=True, scatter_kws={'alpha':0.5})
     # plt.title("Effect of age on Blood Pressure")
     # plt.show()
     
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    sns.barplot(x='stage', y='bp', data=data, ax=axes[0], order=['I', 'II', 'III', 'IV'], hue = 'stage')
-    axes[0].set_title("Effect of Disease Stage on Blood Pressure")
-    sns.barplot(x='therapy', y='bp', data=data, ax=axes[1], hue= 'therapy', legend=False)
-    axes[1].set_title("Effect of Therapy on Blood Pressure")
-    plt.show()
+    # fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    # sns.barplot(x='stage', y='bp', data=data, ax=axes[0], order=['I', 'II', 'III', 'IV'], hue = 'stage')
+    # axes[0].set_title("Effect of Disease Stage on Blood Pressure")
+    # sns.barplot(x='therapy', y='bp', data=data, ax=axes[1], hue= 'therapy', legend=False)
+    # axes[1].set_title("Effect of Therapy on Blood Pressure")
+    # plt.show()
     
     
     if 'hospitaldeath' in data.columns:
@@ -148,7 +148,7 @@ def plot_relationships(data):
         plt.show()
 
 # Generate and plot data
-data = generate_patient_data(1000, seed = 123)
+data = generate_patient_data(30000, seed = 123)
 plot_relationships(data)
 
 

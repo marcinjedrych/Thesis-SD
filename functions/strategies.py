@@ -14,7 +14,7 @@ import numpy as np
 from autoimpute.imputations import MultipleImputer
 
 
-def multiple_imputation(df, n_imputations=5):
+def multiple_imputation_old(df, n_imputations=5):
     
     """ (from stefvanbuuren.name)
         - When covariates have missingness & MAR: estimated statistics and regression coefficients biased with complete case analysis
@@ -74,65 +74,107 @@ def multiple_imputation(df, n_imputations=5):
 
     return combined_imputed_df
 
+def MI_impute(df, n_imputations=10, random_state=123):
+    df_copy = df.copy()
+    categorical_cols = df_copy.select_dtypes(include=["object", "category"]).columns.tolist()
 
-# import numpy as np
-# from sklearn.linear_model import LinearRegression
-# from sklearn.metrics import mean_squared_error
-# from sklearn.model_selection import train_test_split
+    # Encode categorical columns if needed
+    if categorical_cols:
+        encoder = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
+        df_copy[categorical_cols] = encoder.fit_transform(df_copy[categorical_cols])
+    else:
+        encoder = None
 
-# def multiple_imputation(df, target_col, n_imputations=10):
-#     df_copy = df.copy()
-    
-#     # Identify categorical columns
-#     categorical_cols = df_copy.select_dtypes(include=["object", "category"]).columns.tolist()
-#     if target_col in categorical_cols:
-#         categorical_cols.remove(target_col)
-    
-#     # Encode categorical columns
-#     encoder = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
-#     df_copy[categorical_cols] = encoder.fit_transform(df_copy[categorical_cols])
-    
-#     # Split into train/test before imputation to avoid data leakage
-#     train_df, test_df = train_test_split(df_copy, test_size=0.2, random_state=42)
+    imputed_datasets = []
+    for i in range(n_imputations):
+        # New random state per imputation for variation
+        imputer = IterativeImputer(max_iter=10, sample_posterior=True, random_state=random_state + i)
+        imputed_array = imputer.fit_transform(df_copy)
+        imputed_df = pd.DataFrame(imputed_array, columns=df.columns)
 
-#     # Store MSEs from each imputation
-#     imputed_mse_list = []
+        # Optional: decode back to original categories
+        if encoder:
+            try:
+                imputed_df[categorical_cols] = encoder.inverse_transform(imputed_df[categorical_cols])
+            except Exception as e:
+                print(f"Decoder error: {e}")
+        
+        imputed_datasets.append(imputed_df)
 
-#     for _ in range(n_imputations):
-#         # Initialize and fit imputer on training data
-#         imputer = IterativeImputer(max_iter=10, sample_posterior=True, random_state=None)
-#         train_imputed = imputer.fit_transform(train_df)
-#         test_imputed = imputer.transform(test_df)
+    return imputed_datasets
 
-#         # Convert back to DataFrame
-#         train_imputed_df = pd.DataFrame(train_imputed, columns=train_df.columns)
-#         test_imputed_df = pd.DataFrame(test_imputed, columns=test_df.columns)
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, recall_score, precision_score, roc_auc_score, brier_score_loss
 
-#         # Fit model
-#         X_train = train_imputed_df.drop(columns=[target_col])
-#         y_train = train_imputed_df[target_col]
-#         X_test = test_imputed_df.drop(columns=[target_col])
-#         y_test = test_imputed_df[target_col]
+results =[]
+def ensemble(imputed_datasets, test_data, target, threshold=0.5, label='Ensemble'):
+    """
+    Trains a logistic regression model on each imputed dataset,
+    makes predictions on the test data, returns predictions and performance metrics.
 
-#         model = LinearRegression()
-#         model.fit(X_train, y_train)
-#         predictions = model.predict(X_test)
+    Parameters:
+    - imputed_datasets: list of imputed training datasets (each a pd.DataFrame)
+    - test_data: pd.DataFrame with missing values already handled
+    - target_col: str, name of the target column
+    - threshold: float, threshold to convert probabilities to class labels
+    - label: str, label for the model in the results
 
-#         # Calculate performance metric
-#         mse = mean_squared_error(y_test, predictions)
-#         imputed_mse_list.append(mse)
+    Returns:
+    - hard_preds: np.array of 0s and 1s (final binary predictions)
+    - soft_preds: np.array of averaged predicted probabilities
+    - results: list containing a dict of evaluation metrics
+    """
+    predictions = []
 
-#     # Apply Rubin's Rules (simplified for performance metrics like MSE)
-#     Q_bar = np.mean(imputed_mse_list)  # average MSE (within-imputation)
-#     B = np.var(imputed_mse_list, ddof=1)  # between-imputation variance
-#     T = Q_bar + (1 + 1/n_imputations) * B  # total variance
-    
-#     return {
-#         "MSE_mean": Q_bar,
-#         "MSE_total_variance": T,
-#         "MSE_std_error": np.sqrt(T),
-#         "all_mse": imputed_mse_list
-#     }
+    # Identify categorical columns
+    categorical_cols = test_data.select_dtypes(include=["object", "category"]).columns.tolist()
+    encoder = None
+
+    if categorical_cols:
+        encoder = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
+        combined_data = pd.concat([df.drop(columns=[target]) for df in imputed_datasets] + 
+                                  [test_data.drop(columns=[target])])
+        encoder.fit(combined_data[categorical_cols])
+
+    for df in imputed_datasets:
+        X_train = df.drop(columns=[target])
+        y_train = df[target]
+        X_test = test_data.drop(columns=[target])
+
+        if encoder:
+            X_train[categorical_cols] = encoder.transform(X_train[categorical_cols])
+            X_test[categorical_cols] = encoder.transform(X_test[categorical_cols])
+
+        model = LogisticRegression(max_iter=1000)
+        model.fit(X_train, y_train)
+
+        preds = model.predict_proba(X_test)[:, 1]
+        predictions.append(preds)
+
+    predictions_array = np.array(predictions)
+    soft_preds = predictions_array.mean(axis=0)
+    hard_preds = (soft_preds >= threshold).astype(int)
+
+    # Calculate metrics
+    y_true = test_data[target].values
+    acc = accuracy_score(y_true, hard_preds)
+    recall = recall_score(y_true, hard_preds)
+    precision = precision_score(y_true, hard_preds)
+    auc = roc_auc_score(y_true, soft_preds)
+    brier = brier_score_loss(y_true, soft_preds)
+
+    results.append({
+        'Model': label,
+        'Accuracy': acc,
+        'Recall': recall,
+        'Precision': precision,
+        'AUC': auc,
+        'Brier Score': brier
+    })
+
+    return hard_preds, soft_preds, results
+
+
 
 
 def complete_cases(df):
