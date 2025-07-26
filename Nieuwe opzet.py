@@ -43,9 +43,6 @@ def run_baseline(train_data, test_data, n_iter, n_subset, exclude = None, synthe
     return results
     
 
-baseline_original = run_baseline(train_data, test_data, n_iter, n_subset, exclude)
-baseline_synthetic = run_baseline(train_data, test_data, n_iter, n_subset, exclude, synthetic = True)
-
 # 2 Missing data
 
 target_missing_rate=0.45
@@ -72,13 +69,40 @@ def run_models(train_data, test_data, n_iter, n_subset, exclude = None, syntheti
         results.append(result)
 
     return results
-    
+
+### 1. BASELINE
+baseline_original = run_baseline(train_data, test_data, n_iter, n_subset, exclude)
+baseline_synthetic = run_baseline(train_data, test_data, n_iter, n_subset, exclude, synthetic = True)
+
+### 2. MISSINGNESS (ORIGINAL DATA)
+## 2.1 MCAR   
 original_mcar_cca = run_models(train_data, test_data, n_iter, n_subset, exclude)
-
-# ! special case
-#original_mcar_mi = run_models(train_data, test_data, n_iter, n_subset, exclude)
-
+#original_mcar_mi = run_models(train_data, test_data, n_iter, n_subset, exclude) # ! MI is special case
 original_mcar_ind = run_models(train_data, test_data, n_iter, n_subset, exclude, strategy = missing_indicator())
 
+## 2.2 MAR
+original_mar_cca = run_models(train_data, test_data, n_iter, n_subset, exclude, m_type=mar())
+#original_mar_mi = run_models(train_data, test_data, n_iter, n_subset, exclude, m_type = mar())
+original_mar_ind = run_models(train_data, test_data, n_iter, n_subset, exclude, strategy = missing_indicator(), m_type=mar())
 
-# ..... Na Egypte
+### 2.3 MNAR
+original_mnar_cca = run_models(train_data, test_data, n_iter, n_subset, exclude, m_type=mnar())
+#original_mnar_mi = run_models(train_data, test_data, n_iter, n_subset, exclude, m_type = mnar())
+original_mnar_ind = run_models(train_data, test_data, n_iter, n_subset, exclude, strategy = missing_indicator(), m_type=mnar())
+
+### 3. MISSINGNESS (SYNTHETIC DATA)
+## 3.1 MCAR   
+original_mcar_cca = run_models(train_data, test_data, n_iter, n_subset, exclude, synthetic=True)
+#original_mcar_mi = run_models(train_data, test_data, n_iter, n_subset, exclude, synthetic=True)
+original_mcar_ind = run_models(train_data, test_data, n_iter, n_subset, exclude, strategy = missing_indicator(), synthetic=True)
+
+## 3.2 MAR
+original_mar_cca = run_models(train_data, test_data, n_iter, n_subset, exclude, m_type=mar(), synthetic=True)
+#original_mar_mi = run_models(train_data, test_data, n_iter, n_subset, exclude, m_type = mar(), synthetic=True)
+original_mar_ind = run_models(train_data, test_data, n_iter, n_subset, exclude, strategy = missing_indicator(), m_type=mar(), synthetic=True)
+
+### 3.3 MNAR
+original_mnar_cca = run_models(train_data, test_data, n_iter, n_subset, exclude, m_type=mnar(), synthetic=True)
+#original_mnar_mi = run_models(train_data, test_data, n_iter, n_subset, exclude, m_type = mnar(), synthetic=True)
+original_mnar_ind = run_models(train_data, test_data, n_iter, n_subset, exclude, strategy = missing_indicator(), m_type=mnar(), synthetic=True)
+
