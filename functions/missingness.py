@@ -22,20 +22,20 @@ def plot_missingness(df, title):
 
 ## MISSING COMPLETELY AT RANDOM
 
-def mcar(df, target_column, missing_rate=0.45, seed=123):
+def mcar(df, target_column, target_missing_rate=0.45, seed=123):
     
     np.random.seed(seed)
     df_mcar = df.copy()
     
     # Create missing values randomly
-    mask = np.random.binomial(1, missing_rate, size=len(df)).astype(bool)
+    mask = np.random.binomial(1, target_missing_rate, size=len(df)).astype(bool)
     df_mcar.loc[mask, target_column] = np.nan
     
     missingpr = (df_mcar[target_column].isna().sum() / len(df_mcar[target_column])) *100
     print('\n _____________________________________________ \n')
     print("      MISSING COMPLETELY AT RANDOM (MCAR)")
     print(f'\nTarget column: {target_column}')
-    print(f'Target missing rate: {missing_rate}')
+    print(f'Target missing rate: {target_missing_rate}')
     print(f'\n Actual missing: {missingpr:.2f}')
     print('\n _____________________________________________ \n')
     
@@ -119,10 +119,10 @@ def mar(df, target_column, target_missing_rate=0.45, beta_1=0.5, seed=123,  pred
     print("      MISSING AT RANDOM (LOGISTIC MODEL)")
     print(f'\n Predictor column: {predictor_column}')
     print(f' Target column: {target_column}')
-    print(f' Doelwit missing rate: {target_missing_rate*100:.2f}%')
-    print(f' Beta_1 (effectsterkte): {beta_1}')
-    print(f' Berekende beta_0: {beta_0:.2f}')
-    print(f' Werkelijke missingness: {actual_missing:.2f}%')
+    print(f' Target missing rate: {target_missing_rate*100:.2f}%')
+    print(f' Beta_1: {beta_1}')
+    print(f' Computed beta_0: {beta_0:.2f}')
+    print(f' Actual missing: {actual_missing:.2f}%')
     print(' _____________________________________________ \n')
 
     # Plot
