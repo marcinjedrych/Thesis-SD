@@ -35,7 +35,6 @@ df3["BloodPressure"] = df3["BloodPressure"].replace(0, np.nan)
 df3["SkinThickness"] = df3["SkinThickness"].replace(0, np.nan)
 df3["Insulin"] = df3["Insulin"].replace(0, np.nan)
 
-
 def usecase(df, missing_predictors, target, selected_predictors = None):
     complete_df = df.dropna()
     test_df = complete_df.sample(frac=0.2, random_state=42)

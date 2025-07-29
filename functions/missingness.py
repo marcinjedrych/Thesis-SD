@@ -57,7 +57,7 @@ def mcar(df, target_column, target_missing_rate=0.45, seed=123):
     
     df_mcar = df_mcar.drop(columns=['missing'])
 
-    return df_mcar
+    return df_mcar, missingpr
 
 
 #find optimal beta0
@@ -143,7 +143,7 @@ def mar(df, target_column, target_missing_rate=0.45, beta_1=0.5, seed=123,  pred
     
     df_mar = df_mar.drop(columns=['missing'])
 
-    return df_mar
+    return df_mar, actual_missing
 
 
 # MISSINGNESS NOT AT RANDOM
@@ -196,4 +196,4 @@ def mnar(df, target_column, target_missing_rate=0.45, beta_1=0.1, seed=123):
     
     df_mnar = df_mnar.drop(columns=['missing'])
     
-    return df_mnar
+    return df_mnar, missingpr

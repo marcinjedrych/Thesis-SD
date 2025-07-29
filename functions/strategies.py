@@ -23,12 +23,12 @@ def MI_impute(df, n_imputations=10, random_state=123):
 
     imputed_datasets = []
     for i in range(n_imputations):
-        # New random state per imputation for variation
+        
         imputer = IterativeImputer(max_iter=10, sample_posterior=True, random_state=random_state + i)
         imputed_array = imputer.fit_transform(df_copy)
         imputed_df = pd.DataFrame(imputed_array, columns=df.columns)
 
-        # Optional: decode back to original categories
+        # decode back to original categories
         if encoder:
             try:
                 imputed_df[categorical_cols] = encoder.inverse_transform(imputed_df[categorical_cols])
