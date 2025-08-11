@@ -12,6 +12,9 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
+plots = False
+seperability_check = False
+
 def generate_patient_data(nsamples=10000, seed=123):
     np.random.seed(seed)
     
@@ -148,62 +151,62 @@ def plot_relationships(data):
         plt.show()
 
 # Generate and plot data
-data = generate_patient_data(30000, seed = 123)
-plot_relationships(data)
-
+data = generate_patient_data(10000, seed = 122)
+if plots is True:
+    plot_relationships(data)
 
 # SEPERABILTY?
-
-train_idx, test_idx = train_test_split(data.index, test_size=0.2, random_state=123)
-train_data = data.loc[train_idx]
-test_data = data.loc[test_idx]
-
-stage_order = {'I': 1, 'II': 2, 'III': 3, 'IV': 4}
-train_data['stage'] = pd.Categorical(train_data['stage'], categories=stage_order.keys(), ordered=True)
-# If you need the numeric version (e.g., for multiplication), extract codes + 1
-train_data['stage_num'] = train_data['stage'].cat.codes + 1
-
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-
-train_data = train_data.drop(columns=['stage'])
-
-# Features en target
-X = train_data.drop(columns=['hospitaldeath','latent1','latent2'])
-y = train_data['hospitaldeath']
-
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-# Model fit
-model = LogisticRegression(solver='liblinear')  # 'liblinear' is stabieler bij kleine datasets
-model.fit(X_scaled, y)
-
-# Coëfficiënts
-print(pd.Series(model.coef_[0], index=X.columns).sort_values())
-
-probs = model.predict_proba(X_scaled)[:, 1]
-
-plt.figure(figsize=(8,4))
-sns.histplot(probs, bins=20, kde=False)
-plt.title("Histogram of hospdeath predictions")
-plt.xlabel("Predicted probability")
-plt.ylabel("# observations")
-plt.show()
-
-df = train_data.copy()
-df['hospitaldeath'] = y
-print(df.groupby('hospitaldeath').mean())
-
-from sklearn.decomposition import PCA
-
-pca = PCA(n_components=2)
-X_pca = pca.fit_transform(X_scaled)
-
-plt.figure(figsize=(6,6))
-sns.scatterplot(x=X_pca[:,0], y=X_pca[:,1], hue=y, palette='coolwarm', alpha=0.6)
-plt.title("PCA van predictors gekleurd op hospdeath")
-plt.xlabel("PC1")
-plt.ylabel("PC2")
-plt.legend(title="hospdeath")
-plt.show()
+if seperability_check is True:
+    train_idx, test_idx = train_test_split(data.index, test_size=0.2, random_state=123)
+    train_data = data.loc[train_idx]
+    test_data = data.loc[test_idx]
+    
+    stage_order = {'I': 1, 'II': 2, 'III': 3, 'IV': 4}
+    train_data['stage'] = pd.Categorical(train_data['stage'], categories=stage_order.keys(), ordered=True)
+    # If you need the numeric version (e.g., for multiplication), extract codes + 1
+    train_data['stage_num'] = train_data['stage'].cat.codes + 1
+    
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LogisticRegression
+    
+    train_data = train_data.drop(columns=['stage'])
+    
+    # Features en target
+    X = train_data.drop(columns=['hospitaldeath','latent1','latent2'])
+    y = train_data['hospitaldeath']
+    
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    # Model fit
+    model = LogisticRegression(max_iter=1000, random_state=123)  # 'liblinear' is stabieler bij kleine datasets
+    model.fit(X_scaled, y)
+    
+    # Coëfficiënts
+    print(pd.Series(model.coef_[0], index=X.columns).sort_values())
+    
+    probs = model.predict_proba(X_scaled)[:, 1]
+    
+    plt.figure(figsize=(8,4))
+    sns.histplot(probs, bins=20, kde=False)
+    plt.title("Histogram of hospdeath predictions")
+    plt.xlabel("Predicted probability")
+    plt.ylabel("# observations")
+    plt.show()
+    
+    df = train_data.copy()
+    df['hospitaldeath'] = y
+    print(df.groupby('hospitaldeath').mean())
+    
+    from sklearn.decomposition import PCA
+    
+    pca = PCA(n_components=2)
+    X_pca = pca.fit_transform(X_scaled)
+    
+    plt.figure(figsize=(6,6))
+    sns.scatterplot(x=X_pca[:,0], y=X_pca[:,1], hue=y, palette='coolwarm', alpha=0.6)
+    plt.title("PCA van predictors gekleurd op hospdeath")
+    plt.xlabel("PC1")
+    plt.ylabel("PC2")
+    plt.legend(title="hospdeath")
+    plt.show()
