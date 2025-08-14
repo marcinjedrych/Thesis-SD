@@ -21,14 +21,14 @@ from functions.model import logistic_regression
 import time
 start_time = time.time()
 
-n_iter = 200
+n_iter = 100
 exclude = ['latent1', 'latent2']
 
 # 1 BASELINE
 def run_baseline(n_iter, exclude=None, synthetic=False):
     results = []
     for i in range(n_iter):
-        data = generate_patient_data(nsamples=500, seed=i)
+        data = generate_patient_data(nsamples=2000, seed=i)
         train_data, test_data = train_test_split(data, test_size=0.2, random_state=i)
 
         if synthetic:
@@ -54,7 +54,7 @@ def run_models(n_iter, exclude=None, synthetic=False, m_type=None, strategy="CCA
     m_amount = []
 
     for i in range(n_iter):
-        data = generate_patient_data(nsamples=500, seed=i)
+        data = generate_patient_data(nsamples=2000, seed=i)
         train_data, test_data = train_test_split(data, test_size=0.2, random_state=i)
 
         train_data, m_proportion = m_type(train_data, target_column="bp", target_missing_rate=target_missing_rate)
@@ -104,42 +104,41 @@ def run_models(n_iter, exclude=None, synthetic=False, m_type=None, strategy="CCA
 
 
 ### 1. BASELINE
-baseline_original = run_baseline(n_iter, exclude)
-# baseline_synthetic = run_baseline(n_iter, exclude, synthetic=True)
+#baseline_original = run_baseline(n_iter, exclude)
+baseline_synthetic = run_baseline(n_iter, exclude, synthetic=True)
 
 ### 2. MISSINGNESS (ORIGINAL DATA)
 ## 2.1 MCAR 
-print("original MCAR")  
-original_mcar_cca, _ = run_models(n_iter, exclude)
-original_mcar_mi, _ = run_models(n_iter, exclude, strategy="MI")
-original_mcar_ind, _ = run_models(n_iter, exclude, strategy="IND")
+# print("original MCAR")  
+# original_mcar_cca, _ = run_models(n_iter, exclude)
+# original_mcar_mi, _ = run_models(n_iter, exclude, strategy="MI")
+# original_mcar_ind, _ = run_models(n_iter, exclude, strategy="IND")
 
-## 2.2 MAR
-print("original MAR") 
-original_mar_cca, _ = run_models(n_iter, exclude, m_type=mar)
-original_mar_mi, _ = run_models(n_iter, exclude, strategy="MI", m_type=mar)
-original_mar_ind, _ = run_models(n_iter, exclude, strategy="IND", m_type=mar)
+# ## 2.2 MAR
+# print("original MAR") 
+# original_mar_cca, _ = run_models(n_iter, exclude, m_type=mar)
+# original_mar_mi, _ = run_models(n_iter, exclude, strategy="MI", m_type=mar)
+# original_mar_ind, _ = run_models(n_iter, exclude, strategy="IND", m_type=mar)
 
-### 2.3 MNAR
-print("original MNAR") 
-original_mnar_cca, _ = run_models(n_iter, exclude, m_type=mnar)
-original_mnar_mi, _ = run_models(n_iter, exclude, strategy="MI", m_type=mnar)
-original_mnar_ind, _ = run_models(n_iter, exclude, strategy="IND", m_type=mnar)
+# ### 2.3 MNAR
+# print("original MNAR") 
+# original_mnar_cca, _ = run_models(n_iter, exclude, m_type=mnar)
+# original_mnar_mi, _ = run_models(n_iter, exclude, strategy="MI", m_type=mnar)
+# original_mnar_ind, _ = run_models(n_iter, exclude, strategy="IND", m_type=mnar)
 
 ## 3. MISSINGNESS (SYNTHETIC DATA)
-# Uncomment when needed
-# print("synthetic MCAR") 
-# syn_mcar_cca, _ = run_models(n_iter, exclude, synthetic=True)
-# syn_mcar_mi, _ = run_models(n_iter, exclude, strategy="MI", synthetic=True)
-# syn_mcar_ind, _ = run_models(n_iter, exclude, strategy="IND", synthetic=True)
-# print("synthetic MAR") 
-# syn_mar_cca, _ = run_models(n_iter, exclude, m_type=mar, synthetic=True)
-# syn_mar_mi, _ = run_models(n_iter, exclude, strategy="MI", m_type=mar, synthetic=True)
-# syn_mar_ind, _ = run_models(n_iter, exclude, strategy="IND", m_type=mar, synthetic=True)
-# print("synthetic MNAR") 
-# syn_mnar_cca, _ = run_models(n_iter, exclude, m_type=mnar, synthetic=True)
-# syn_mnar_mi, _ = run_models(n_iter, exclude, strategy="MI", m_type=mnar, synthetic=True)
-# syn_mnar_ind, _ = run_models(n_iter, exclude, strategy="IND", m_type=mnar, synthetic=True)
+print("synthetic MCAR") 
+syn_mcar_cca, pr1  = run_models(n_iter, exclude, synthetic=True)
+syn_mcar_mi, pr2 = run_models(n_iter, exclude, strategy="MI", synthetic=True)
+syn_mcar_ind, pr3 = run_models(n_iter, exclude, strategy="IND", synthetic=True)
+print("synthetic MAR") 
+syn_mar_cca, pr4 = run_models(n_iter, exclude, m_type=mar, synthetic=True)
+syn_mar_mi, pr5 = run_models(n_iter, exclude, strategy="MI", m_type=mar, synthetic=True)
+syn_mar_ind, pr6 = run_models(n_iter, exclude, strategy="IND", m_type=mar, synthetic=True)
+print("synthetic MNAR") 
+syn_mnar_cca, pr7 = run_models(n_iter, exclude, m_type=mnar, synthetic=True)
+syn_mnar_mi, pr8 = run_models(n_iter, exclude, strategy="MI", m_type=mnar, synthetic=True)
+syn_mnar_ind, pr9 = run_models(n_iter, exclude, strategy="IND", m_type=mnar, synthetic=True)
 
 # helper function
 def aggregate_results(results_list):
@@ -164,21 +163,34 @@ def collect_metrics(results, miss_type, data_type, strategy):
     summary['auc_sd'].append(std_vals['AUC'])
 
 # original data
-collect_metrics(original_mcar_cca, 'MCAR', 'original', 'CCA')
-collect_metrics(original_mcar_mi, 'MCAR', 'original', 'MI')
-collect_metrics(original_mcar_ind, 'MCAR', 'original', 'IND')
+# collect_metrics(original_mcar_cca, 'MCAR', 'original', 'CCA')
+# collect_metrics(original_mcar_mi, 'MCAR', 'original', 'MI')
+# collect_metrics(original_mcar_ind, 'MCAR', 'original', 'IND')
 
-collect_metrics(original_mar_cca, 'MAR', 'original', 'CCA')
-collect_metrics(original_mar_mi, 'MAR', 'original', 'MI')
-collect_metrics(original_mar_ind, 'MAR', 'original', 'IND')
+# collect_metrics(original_mar_cca, 'MAR', 'original', 'CCA')
+# collect_metrics(original_mar_mi, 'MAR', 'original', 'MI')
+# collect_metrics(original_mar_ind, 'MAR', 'original', 'IND')
 
-collect_metrics(original_mnar_cca, 'MNAR', 'original', 'CCA')
-collect_metrics(original_mnar_mi, 'MNAR', 'original', 'MI')
-collect_metrics(original_mnar_ind, 'MNAR', 'original', 'IND')
+# collect_metrics(original_mnar_cca, 'MNAR', 'original', 'CCA')
+# collect_metrics(original_mnar_mi, 'MNAR', 'original', 'MI')
+# collect_metrics(original_mnar_ind, 'MNAR', 'original', 'IND')
+
+#synthetic
+collect_metrics(syn_mcar_cca, 'MCAR', 'synthetic', 'CCA')
+collect_metrics(syn_mcar_mi, 'MCAR', 'synthetic', 'MI')
+collect_metrics(syn_mcar_ind, 'MCAR', 'synthetic', 'IND')
+
+collect_metrics(syn_mar_cca, 'MAR', 'synthetic', 'CCA')
+collect_metrics(syn_mar_mi, 'MAR', 'synthetic', 'MI')
+collect_metrics(syn_mar_ind, 'MAR', 'synthetic', 'IND')
+
+collect_metrics(syn_mnar_cca, 'MNAR', 'synthetic', 'CCA')
+collect_metrics(syn_mnar_mi, 'MNAR', 'synthetic', 'MI')
+collect_metrics(syn_mnar_ind, 'MNAR', 'synthetic', 'IND')
 
 # baseline stats
-baseline_orig_mean, baseline_orig_std = aggregate_results(baseline_original)
-# baseline_syn_mean, baseline_syn_std = aggregate_results(baseline_synthetic)
+#baseline_orig_mean, baseline_orig_std = aggregate_results(baseline_original)
+baseline_syn_mean, baseline_syn_std = aggregate_results(baseline_synthetic)
 
 def plot_baseline(mean_orig, std_orig, mean_syn, std_syn):
     labels = ['Original', 'Synthetic']
@@ -229,7 +241,11 @@ def plot_summary(df, title, baseline_auc):
     plt.show()
 
 original_df = summary_df[summary_df['data_type'] == 'original']
-plot_summary(original_df, 'Original Data – AUC by Missingness and Strategy', baseline_orig_mean['AUC'])
+synthetic_df = summary_df[summary_df['data_type'] == 'synthetic']
+#plot_summary(synthetic_df, 'synthetic data - AUC by Missingness and Strategy', baseline_auc)
+#
+plot_summary(synthetic_df, 'Synt Data – AUC by Missingness and Strategy', baseline_syn_mean['AUC'])
+
 
 end_time = time.time()
 print(f"Script runtime: {end_time - start_time:.2f} seconds")

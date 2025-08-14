@@ -122,7 +122,7 @@ def find_beta_0(df, predictor_col, target_missing_rate, beta_1,
 
 ## MISSING AT RANDOM (MAR) 
 
-def mar(df, target_column, target_missing_rate=0.45, beta_1=1, seed=124,  predictor_column = "stage"):
+def mar(df, target_column, target_missing_rate=0.45, beta_1=0.6, seed=124,  predictor_column = "stage"):
     
     np.random.seed(seed)
     df_mar = df.copy()
