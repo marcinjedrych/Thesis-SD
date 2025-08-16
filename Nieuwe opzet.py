@@ -21,7 +21,7 @@ from functions.model import logistic_regression
 import time
 start_time = time.time()
 
-n_iter = 100
+n_iter = 70
 exclude = ['latent1', 'latent2']
 
 # 1 BASELINE
