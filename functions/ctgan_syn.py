@@ -45,27 +45,4 @@ def generate_synthetic_data(df):
 # syn = generate_synthetic_data(data)
 
 
-# Generate original data (your function)
-#data = generate_patient_data(nsamples=1000, seed=123)
-# Generate synthetic data
-#syn = generate_synthetic_data(data, target_col="hospitaldeath", epochs=280, plot_loss=True)
-
     
-#Old function (deprecated)
-from sdv.metadata import SingleTableMetadata
-
-# def generate_synthetic_data(df):
-#     df = df.copy()
-
-#     if 'Index' in df.columns:
-#         df = df.drop(columns=['Index'])
-#     if 'Unnamed: 0' in df.columns:
-#         df = df.drop(columns=['Unnamed: 0'])
-
-#     metadata_obj = SingleTableMetadata()
-#     metadata_obj.detect_from_dataframe(df)
-#     synthesizer = CTGANSynthesizer(metadata_obj, epochs=280)
-#     synthesizer.fit(df)
-#     synthetic_data = synthesizer.sample(num_rows=len(df))
-
-#     return synthetic_data

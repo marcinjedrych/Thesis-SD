@@ -46,9 +46,9 @@ def generate_patient_data(nsamples=10000, seed=123):
     )
 
     # Define effects of independent predictors on hospitaldeath
-    death_intercept = -36
+    death_intercept = -48 #-36
     death_beta_stage = 0.27
-    death_beta_bp = 0.3
+    death_beta_bp = 0.4 #0.3
     death_beta_therapy = -0.2
     death_beta_latent2 = 0.04
     death_beta_latent1 = -0.04
@@ -77,83 +77,165 @@ def generate_patient_data(nsamples=10000, seed=123):
     
     return data
 
-def plot_relationships(data):
+# --- NEW: minimal multi-seed loop (no helper functions) ----------------------
+# Creates one big dataframe with a _run column.
+n_runs = 250
+base_seed = 122
+dfs = []
+for i in range(n_runs):
+    df_i = generate_patient_data(nsamples=10000, seed=base_seed + i)
+    df_i['_run'] = i
+    dfs.append(df_i)
+all_data = pd.concat(dfs, ignore_index=True)
+  
+def plot_relationships(data, aggregate=False, nbins=40, min_count=40):
     
     sns.set(style="whitegrid")
     
-    if 'hospitaldeath' in data.columns:
-        #class balance
-        data['hospitaldeath'].value_counts().plot(kind='bar')
-        plt.xlabel('hospitaldeath')
-        plt.ylabel('Frequency')
-        plt.title('Class Balance of hospdeath')
-        plt.xticks([0, 1], rotation=0)
-        plt.show()
+    if not aggregate or '_run' not in data.columns:
+        # -------- ORIGINAL SINGLE-SEED PLOTS (unchanged) --------
+        if 'hospitaldeath' in data.columns:
+            #class balance
+            data['hospitaldeath'].value_counts().plot(kind='bar')
+            plt.xlabel('hospitaldeath')
+            plt.ylabel('Frequency')
+            plt.title('Class Balance of hospdeath')
+            plt.xticks([0, 1], rotation=0)
+            plt.show()
         
-    # Original plots
-    # plt.figure(figsize=(6, 5))
-    # sns.violinplot(x='stage', y='age', data=data, order=['I', 'II', 'III', 'IV'], hue = 'stage')
-    # plt.title("Effect of Age on Disease Stage")
-    # plt.show()
-    
-    # plt.figure(figsize=(6, 5))
-    # sns.regplot(x='bp', y='latent1', data=data, lowess=True, scatter_kws={'alpha':0.5})
-    # plt.title("Effect of Blood Pressure on latent variable 1")
-    # plt.show()
-    
-    # plt.figure(figsize=(6, 5))
-    # sns.regplot(x='age', y='bp', data=data, lowess=True, scatter_kws={'alpha':0.5})
-    # plt.title("Effect of age on Blood Pressure")
-    # plt.show()
-    
-    # fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    # sns.barplot(x='stage', y='bp', data=data, ax=axes[0], order=['I', 'II', 'III', 'IV'], hue = 'stage')
-    # axes[0].set_title("Effect of Disease Stage on Blood Pressure")
-    # sns.barplot(x='therapy', y='bp', data=data, ax=axes[1], hue= 'therapy', legend=False)
-    # axes[1].set_title("Effect of Therapy on Blood Pressure")
-    # plt.show()
-    
-    
-    if 'hospitaldeath' in data.columns:
-        
-        plt.figure(figsize=(15, 18))
-    
         # --- Plot 1: BP vs Death ---
-        plt.subplot(3, 2, 1)  # Row 1, Col 1
+        #plt.subplot(3, 2, 1)  # Row 1, Col 1
         sns.regplot(x='bp', y='hospitaldeath', data=data, logistic=True, ci=None,
                     scatter_kws={'alpha':0.2, 'color':'gray'}, line_kws={'color':'red'})
         plt.title("A) Death Probability by Blood Pressure", pad=20)
+        plt.show()
         
-        # --- Plot 2: Age vs Death ---
-        plt.subplot(3, 2, 2)  # Row 1, Col 2
-        sns.regplot(x='latent2', y='hospitaldeath', data=data, logistic=True, ci=None,
-                    scatter_kws={'alpha':0.2, 'color':'gray'}, line_kws={'color':'red'})
-        plt.title("B) Death Probability by latent variable 2", pad=20)
+        # # --- Plot 2: latent2 vs Death ---
+        # plt.subplot(3, 2, 2)  # Row 1, Col 2
+        # sns.regplot(x='latent2', y='hospitaldeath', data=data, logistic=True, ci=None,
+        #             scatter_kws={'alpha':0.2, 'color':'gray'}, line_kws={'color':'red'})
+        # plt.title("B) Death Probability by latent variable 2", pad=20)
         
         # --- Plot 3: Stage vs Death ---
-        plt.subplot(3, 2, 3)  # Row 2, Col 1 (span full width)
+        #plt.subplot(3, 2, 3)  # Row 2, Col 1 (span full width)
         plt.subplots_adjust(wspace=0.3, hspace=0.4)  # Add spacing
-        sns.barplot(x='stage', y='hospitaldeath', data=data, order=['I', 'II', 'III', 'IV'], hue='stage', legend = False)
+        sns.barplot(x='stage', y='hospitaldeath', data=data, order=['I', 'II', 'III', 'IV'], hue='stage', legend=False)
         plt.title("C) Mortality Rate by Stage", pad=20)
+        plt.show()
         
         # --- Plot 4: Therapy vs Death ---
-        plt.subplot(3, 2, 4)  # Row 2, Col 2
-        sns.barplot(x='therapy', y='hospitaldeath', data=data, hue='therapy', legend = False)
+        #plt.subplot(3, 2, 4)  # Row 2, Col 2
+        sns.barplot(x='therapy', y='hospitaldeath', data=data, hue='therapy', legend=False)
         plt.title("D) Mortality Rate by Therapy", pad=20)
-        
-        # --- Plot 5: Weight vs Death ---
-        plt.subplot(3, 1, 3)  # Row 3 (full width)
-        sns.regplot(x='latent1', y='hospitaldeath', data=data, logistic=True, ci=None,
-                    scatter_kws={'alpha':0.2, 'color':'gray'}, line_kws={'color':'red'})
-        plt.title("E) Death Probability by latent variable 1", pad=20)
-        
-        plt.tight_layout()
         plt.show()
+        return
 
-# Generate and plot data
-data = generate_patient_data(10000, seed = 122)
+    # ----------------- AGGREGATE MODE: SAME PLOTS + VARIABILITY -----------------
+
+    # 1) Class balance (both 0 and 1) with 95% CI (across seeds) — counts to mirror your original
+    run_counts = (
+        data.groupby(['_run', 'hospitaldeath'])
+            .size().rename('count').reset_index()
+    )
+    
+    # mean and SD of counts across runs, per class
+    bal = (run_counts.groupby('hospitaldeath')['count']
+                     .agg(mean='mean', sd='std', n='size')
+                     .reset_index())
+    
+    plt.figure()
+    ax = sns.barplot(x='hospitaldeath', y='mean', data=bal,
+                     hue='hospitaldeath', dodge=False, legend=False)  # keep seaborn default colors
+    ax.errorbar(x=np.arange(len(bal)), y=bal['mean'],
+                yerr=bal['sd'].values,         # <-- mean ± 1 SD
+                fmt='none', capsize=6, linewidth=1.5, color='black')
+    ax.set_title("Class Counts (mean ± 1 SD across seeds)")
+    ax.set_xlabel('hospitaldeath'); ax.set_ylabel('Count')
+    plt.show()
+
+    # 2) BP vs Death — empirical band across seeds 
+    bins = pd.cut(data['bp'], bins=nbins, include_lowest=True)
+    tmp = (
+        data.assign(_bin=bins)
+            .groupby(['_bin', '_run'])
+            .agg(bp_center=('bp', 'mean'),
+                 p=('hospitaldeath', 'mean'),
+                 n=('hospitaldeath', 'size'))
+            .reset_index()
+    )
+    tmp = tmp[tmp['n'] >= min_count]  # stabilize sparse tails
+    
+    curve = (
+        tmp.groupby('_bin')
+           .agg(bp_center=('bp_center', 'mean'),
+                p_mean=('p', 'mean'),
+                p_lo=('p', lambda s: s.quantile(0.025)),
+                p_hi=('p', lambda s: s.quantile(0.975)))
+           .sort_values('bp_center')
+    )
+    
+    plt.figure()
+    plt.fill_between(curve['bp_center'], curve['p_lo'], curve['p_hi'], alpha=0.25, linewidth=0, color="red")
+    plt.plot(curve['bp_center'], curve['p_mean'], lw=2, color="red")
+    plt.title("Death Probability by Blood Pressure")
+    plt.xlabel('bp'); plt.ylabel('P(hospdeath=1)'); plt.ylim(0, 1)
+    plt.show()
+
+
+    # 3) Stage vs Death — same barplot + error bars
+    stage_order = ['I', 'II', 'III', 'IV']
+    stage = (data.groupby(['_run', 'stage'])['hospitaldeath'].mean().reset_index())
+    
+    # mean and standard deviation across runs per stage
+    stage_agg = (stage.groupby('stage')['hospitaldeath']
+                      .agg(mean='mean', sd='std')   # <- SD instead of percentiles
+                      .reset_index())
+    
+    stage_agg['stage'] = pd.Categorical(stage_agg['stage'],
+                                        categories=stage_order, ordered=True)
+    stage_agg = stage_agg.sort_values('stage')
+    
+    plt.figure()
+    ax = sns.barplot(x='stage', y='mean', data=stage_agg, order=stage_order,
+                     hue='stage', legend=False)
+    ax.errorbar(x=np.arange(len(stage_agg)), y=stage_agg['mean'],
+                yerr=stage_agg['sd'].values,          # <- mean ± 1 SD
+                fmt='none', capsize=6, linewidth=1.5, color='black')
+    ax.set_ylim(0, 1)
+    ax.set_title("Mortality Rate by Stage (mean ± 1 SD)")
+    ax.set_xlabel('stage'); ax.set_ylabel('Rate')
+    plt.show()
+
+    # 4) Therapy vs Death — same barplot + error bars
+    therapy = (data.groupby(['_run', 'therapy'])['hospitaldeath'].mean().reset_index())
+    
+    # mean and SD across runs per therapy group
+    therapy_agg = (therapy.groupby('therapy')['hospitaldeath']
+                        .agg(mean='mean', sd='std')
+                        .reset_index())
+    
+    # keep order False -> True (and seaborn default colors)
+    therapy_agg['therapy'] = pd.Categorical(therapy_agg['therapy'],
+                                            categories=[False, True], ordered=True)
+    therapy_agg = therapy_agg.sort_values('therapy')
+    
+    plt.figure()
+    ax = sns.barplot(x='therapy', y='mean', data=therapy_agg,
+                     order=[False, True], hue='therapy', dodge=False, legend=False)
+    ax.errorbar(x=np.arange(len(therapy_agg)), y=therapy_agg['mean'],
+                yerr=therapy_agg['sd'].values,     # mean ± 1 SD
+                fmt='none', capsize=6, linewidth=1.5, color='black')
+    ax.set_ylim(0, 1)
+    ax.set_title("Mortality Rate by Therapy (mean ± 1 SD across seeds)")
+    ax.set_xlabel('therapy'); ax.set_ylabel('Rate')
+    plt.show()
+
+
+data = generate_patient_data(10000, seed=122)
 if plots is True:
-    plot_relationships(data)
+    #plot_relationships(data, aggregate=False)  # 1 run
+    plot_relationships(all_data, aggregate=True)   # shows error bars / bands
+
 
 # SEPERABILTY?
 if seperability_check is True:
