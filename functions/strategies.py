@@ -12,7 +12,7 @@ from sklearn.preprocessing import OrdinalEncoder
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
-def MI_impute(df, n_imputations=12, random_state=123):
+def MI_impute(df, n_imputations=10, random_state=123):
     
     df_copy = df.copy()
     categorical_cols = df_copy.select_dtypes(include=["object", "category"]).columns.tolist()

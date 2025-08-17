@@ -51,49 +51,10 @@ def mcar(df, target_column, target_missing_rate=0.45, seed=123):
     return df_mcar, missingpr
 
 
-#OLD beta0
-# def find_beta_0(df, predictor_column, target_missing_rate, beta_1):
-    
-#     beta_0 = -10  # initial guess
-#     step_size = 0.01  # Stepsize
-#     tolerance = 0.001  # Allowable difference
-   
-#     while True:
-        
-#         # Calculate missingness probability
-#         logit_prob = beta_0 + beta_1 * df[predictor_column]
-#         missing_prob = expit(logit_prob)
-        
-#         # Simulate
-#         mask = np.random.rand(len(df)) < missing_prob
-#         actual_missing_rate = mask.sum() / len(df)
-        
-#         # Check if the missing rate is close to the target
-#         if abs(actual_missing_rate - target_missing_rate) < tolerance:
-#             break
-        
-#         # Adjust beta_0 based on the difference between the actual and target missing rate
-#         if actual_missing_rate < target_missing_rate:
-#             beta_0 += step_size  # Increase beta_0
-#         else:
-#             beta_0 -= step_size  # Decrease beta_0
-    
-#     return beta_0
+
 
 def find_beta_0(df, predictor_col, target_missing_rate, beta_1, 
                 tol=1e-4, max_iter=1000):
-    """
-    Finds beta_0 for MAR logistic missingness such that the proportion
-    of missing values is approximately the target_missing_rate.
-    
-    Parameters:
-    - df: DataFrame
-    - predictor_col: str, name of numeric predictor column
-    - target_missing_rate: float, desired missing proportion (0-1)
-    - beta_1: float, slope
-    - tol: float, tolerance for convergence
-    - max_iter: int, maximum iterations
-    """
     beta_0 = 0
     step_size = 0.1
     
@@ -110,9 +71,9 @@ def find_beta_0(df, predictor_col, target_missing_rate, beta_1,
         # Adjust beta_0
         beta_0 -= step_size * diff
     
-    # If we get here, no convergence
+    # no convergence warning
     print(
-        f"⚠️ WARNING: find_beta_0 did not converge after {max_iter} iterations.\n"
+        f"WARNING: find_beta_0 did not converge after {max_iter} iterations.\n"
         f"   Target missing rate = {target_missing_rate:.4f}, "
         f"achieved = {current_missing_rate:.4f} "
         f"(diff = {diff:.4f})"

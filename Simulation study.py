@@ -24,14 +24,14 @@ baseline = False
 import time
 start_time = time.time()
 
-n_iter = 5
+n_iter = 30
 exclude = ['latent1', 'latent2']
 
 # 1 BASELINE
 def run_baseline(n_iter, exclude=None, synthetic=False):
     results = []
     for i in range(n_iter):
-        data = generate_patient_data(nsamples=2000, seed=i)
+        data = generate_patient_data(nsamples=200, seed=i)
         train_data, test_data = train_test_split(data, test_size=0.2, random_state=i)
 
         if synthetic:
@@ -48,7 +48,7 @@ def run_baseline(n_iter, exclude=None, synthetic=False):
 
 
 # 2 Missing data
-target_missing_rate = 0.45
+target_missing_rate = 0.44
 def run_models(n_iter, exclude=None, synthetic=False, m_type=None, strategy="CCA"):
     if m_type is None:
         m_type = mcar
@@ -57,7 +57,7 @@ def run_models(n_iter, exclude=None, synthetic=False, m_type=None, strategy="CCA
     m_amount = []
 
     for i in range(n_iter):
-        data = generate_patient_data(nsamples=2000, seed=i)
+        data = generate_patient_data(nsamples=200, seed=i)
         train_data, test_data = train_test_split(data, test_size=0.2, random_state=i)
 
         train_data, m_proportion = m_type(train_data, target_column="bp", target_missing_rate=target_missing_rate)

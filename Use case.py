@@ -14,10 +14,10 @@ from functions.ctgan_syn import generate_synthetic_data
 # -----------------------
 # Config
 # -----------------------
-synt = True  # whether to generate synthetic training data
+synt = False  # whether to generate synthetic training data
 file_path = r"C:\Users\Marcin\.cache\kagglehub\datasets\fedesoriano\stroke-prediction-dataset\versions\1\healthcare-dataset-stroke-data.csv"
 target = "stroke"
-n_iter = 50
+n_iter = 2
 strategies = ["CCA", "MI_ensemble", "Missing_Indicator"]
 
 # -----------------------
