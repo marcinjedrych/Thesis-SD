@@ -10,31 +10,17 @@ The goal of this thesis is to evaluate the effectiveness of various missing data
 
 ### Main Scripts
 
-**1. Simulation Missing Data.py**  
-   - Simulates a dataset using predefined functions (`generate.py`)  
-   - Splits data into training and test sets without missingness  
-   - Introduces missing data under MCAR, MAR, and MNAR mechanisms (`missingness.py`)  
-   - Applies missing data handling strategies: CCA, MI, and Indicator (`strategies.py`)  
-   - Saves the generated datasets in `Data/Original/`
+**1. Simulation.py** 
 
-**2. Making Synthetic Data (CTGAN).py**  
-   - Trains CTGAN models to generate synthetic datasets based on the incomplete training sets (`ctgan_syn.py`)  
-   - Saves synthetic datasets in `Data/Synthetic/`
-
-**3. Baseline model.py**  
-   - Trains logistic regression models on complete original and synthetic datasets  
-   - Compares model performance between synthetic and original data
-
-**4. Missing data models.py**  
-   - Trains logistic regression models on datasets with missing data (handled by CCA, MI, or Indicator)  
-   - Evaluates model performance on both original and synthetic datasets
-
-**5. Performance plots.py**  
-   - Visualizes model performance metrics (e.g., AUC, accuracy)  
-   - Compares results across different missingness types and handling strategies
+   - Generation of datasets (`generate.py`)   
+   - Inducing of missing data under MCAR, MAR, and MNAR mechanisms (`missingness.py`)  
+   - Application of missing data handling strategies: CCA, MI, and Indicator (`strategies.py`)
+   - Training of CTGAN models to generate synthetic datasets (`ctgan_syn.py`) 
+   - Training of logistic regression models for baseline, original missing, and synthetic missing data (`model.py`)
+   - Evaluation of model performance and visualisation 
 
 **6. Use case.py**  
-   - Applies the full pipeline on a real-world use case (if applicable)
+   - Applies the full pipeline on a real-world use case.
 
 ### functions/ Folder
 
