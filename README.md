@@ -19,7 +19,7 @@ The goal of this thesis is to evaluate the effectiveness of various missing data
    - Training of logistic regression models for baseline, original missing, and synthetic missing data (`model.py`)
    - Evaluation of model performance and visualisation 
 
-**6. Use case.py**  
+**2. Use case.py**  
    - Applies the full pipeline on a real-world use case.
 
 ### functions/ Folder
