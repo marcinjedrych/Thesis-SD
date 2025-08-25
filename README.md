@@ -4,7 +4,7 @@ This repository contains the code and resources for my Master's thesis in Statis
 
 ## Overview
 
-The goal of this thesis is to evaluate the effectiveness of various missing data handling techniques: Complete Case Analysis (CCA), Multiple Imputation (MI), and the Indicator Method. This work aims to invistigate this particulary in the context of synthetic data generation. Synthetic datasets are created using CTGAN, and the performance of models trained on synthetic data is compared against those trained on original datasets.
+The goal of this thesis is to evaluate the effectiveness of various missing data handling techniques: Complete Case Analysis (CCA), Multiple Imputation (MI), and the Indicator Method (IND). This work aims to invistigate this particulary in the context of synthetic data generation. Synthetic datasets are created using CTGAN, and the performance of models trained on synthetic data is compared against those trained on original datasets.
 
 ## Repository Structure
 
@@ -17,7 +17,7 @@ The goal of this thesis is to evaluate the effectiveness of various missing data
    - Application of missing data handling strategies: CCA, MI, and Indicator (`strategies.py`)
    - Training of CTGAN models to generate synthetic datasets (`ctgan_syn.py`) 
    - Training of logistic regression models for baseline, original missing, and synthetic missing data (`model.py`)
-   - Evaluation of model performance and visualisation 
+   - Evaluation of model performance and visualization 
 
 **2. Use case.py**  
    - Applies the full pipeline on a real-world use case.
