@@ -10,7 +10,7 @@ The goal of this thesis is to evaluate the effectiveness of various missing data
 
 ### Main Scripts
 
-**1. Simulation.py** 
+**1. Simulation study.py** 
 
    - Generation of datasets (`generate.py`)   
    - Inducing of missing data under MCAR, MAR, and MNAR mechanisms (`missingness.py`)  
