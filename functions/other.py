@@ -11,15 +11,6 @@ import os
 import pandas as pd
 
 def results_to_excel(results, output_file='model_performance_summary.xlsx'):
-    
-    """
-    Save model performance results to an Excel file.
-    If the file exists, it updates existing models based on 'Model' name.
-    
-    Parameters:
-    - results: List of dictionaries containing model performance.
-    - output_file: Path to the Excel file (default: 'model_performance_summary.xlsx').
-    """
 
     # Convert the list of results to a DataFrame
     results_df = pd.DataFrame(results)

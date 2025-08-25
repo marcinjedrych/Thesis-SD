@@ -12,7 +12,7 @@ from sklearn.preprocessing import OrdinalEncoder
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
-def MI_impute(df, n_imputations=10, random_state=123):
+def MI_impute(df, n_imputations=10, random_state=123, max_iter = 50):
     
     df_copy = df.copy()
     categorical_cols = df_copy.select_dtypes(include=["object", "category"]).columns.tolist()
@@ -27,7 +27,7 @@ def MI_impute(df, n_imputations=10, random_state=123):
     imputed_datasets = []
     for i in range(n_imputations):
         
-        imputer = IterativeImputer(max_iter=10, sample_posterior=True, random_state=random_state + i)
+        imputer = IterativeImputer(max_iter=max_iter, sample_posterior=True, random_state=random_state + i)
         imputed_array = imputer.fit_transform(df_copy)
         imputed_df = pd.DataFrame(imputed_array, columns=df.columns)
 
@@ -91,13 +91,12 @@ def ensemble(imputed_datasets, test_data, target, threshold=0.5, label='Ensemble
         # Ensure test has same columns as train
         X_test = X_test.reindex(columns=X_train.columns, fill_value=0)
 
-        # ===== Add scaling here =====
+        # scaling
         scaler = StandardScaler()
         X_train = scaler.fit_transform(X_train)
         X_test = scaler.transform(X_test)
-        # ============================
 
-        model = LogisticRegression(max_iter=1000, random_state=123)
+        model = LogisticRegression(max_iter=1000, random_state=123, class_weight="balanced")
         model.fit(X_train, y_train)
 
         preds = model.predict_proba(X_test)[:, 1]

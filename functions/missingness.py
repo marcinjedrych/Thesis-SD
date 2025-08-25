@@ -12,7 +12,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 
-
 def plot_missingness(df, title):
     plt.figure(figsize=(8, 6))
     sns.heatmap(df.isnull(), cmap='viridis', cbar=False, yticklabels=False)
@@ -51,8 +50,6 @@ def mcar(df, target_column, target_missing_rate=0.45, seed=123):
     return df_mcar, missingpr
 
 
-
-
 def find_beta_0(df, predictor_col, target_missing_rate, beta_1, 
                 tol=1e-4, max_iter=1000):
     beta_0 = 0
@@ -78,7 +75,7 @@ def find_beta_0(df, predictor_col, target_missing_rate, beta_1,
         f"achieved = {current_missing_rate:.4f} "
         f"(diff = {diff:.4f})"
     )
-    return beta_0  # Return the best we could get
+    return beta_0  # Return the best we get
 
 
 ## MISSING AT RANDOM (MAR) 
@@ -189,3 +186,4 @@ def mnar(df, target_column, target_missing_rate=0.45, beta_1=0.1, seed=123):
     # df_mnar = df_mnar.drop(columns=['missing'])
     
     return df_mnar, missingpr
+

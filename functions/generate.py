@@ -27,15 +27,14 @@ def generate_patient_data(nsamples=10000, seed=123):
     # Generate Therapy independently
     therapy = np.random.choice([False, True], size=nsamples, p=[0.5, 0.5])
     
-    # Generate latent2 (previously Age)
+    # Generate latent2 (previously age)
     latent2 = np.random.normal(loc=60, scale=10, size=nsamples)
-    #latent2 = np.random.gamma(shape=36, scale=1.6667, size=nsamples)
+    #latent2 = np.random.gamma(shape=36, scale=1.6667, size=nsamples) # try different distribution
     
     # Generate BP independently
     bp = np.random.normal(loc=120, scale=10, size=nsamples)
     
-    # Generate Weight
-    # Weight based on BP (e.g., weight increases with BP)
+    # Generate latent (previously weight)
     latent1_intercept = 30
     latent1_beta_bp = 0.4
     
@@ -77,8 +76,7 @@ def generate_patient_data(nsamples=10000, seed=123):
     
     return data
 
-# --- NEW: minimal multi-seed loop (no helper functions) ----------------------
-# Creates one big dataframe with a _run column.
+# --- Loop ----------------------
 n_runs = 250
 base_seed = 122
 dfs = []
@@ -93,7 +91,8 @@ def plot_relationships(data, aggregate=False, nbins=40, min_count=40):
     sns.set(style="whitegrid")
     
     if not aggregate or '_run' not in data.columns:
-        # -------- ORIGINAL SINGLE-SEED PLOTS (unchanged) --------
+        
+        # -------- ORIGINAL SINGLE-SEED PLOTS --------
         if 'hospitaldeath' in data.columns:
             #class balance
             data['hospitaldeath'].value_counts().plot(kind='bar')
@@ -130,15 +129,14 @@ def plot_relationships(data, aggregate=False, nbins=40, min_count=40):
         plt.show()
         return
 
-    # ----------------- AGGREGATE MODE: SAME PLOTS + VARIABILITY -----------------
+    # ----------------- MULTI-SEED PLOTS + VARIABILITY -----------------
 
     # 1) Class balance (both 0 and 1) with 95% CI (across seeds) — counts to mirror your original
     run_counts = (
         data.groupby(['_run', 'hospitaldeath'])
             .size().rename('count').reset_index()
     )
-    
-    # mean and SD of counts across runs, per class
+
     bal = (run_counts.groupby('hospitaldeath')['count']
                      .agg(mean='mean', sd='std', n='size')
                      .reset_index())
@@ -153,7 +151,7 @@ def plot_relationships(data, aggregate=False, nbins=40, min_count=40):
     ax.set_xlabel('hospitaldeath'); ax.set_ylabel('Count')
     plt.show()
 
-    # 2) BP vs Death — empirical band across seeds 
+    # 2) BP vs Death
     bins = pd.cut(data['bp'], bins=nbins, include_lowest=True)
     tmp = (
         data.assign(_bin=bins)
@@ -163,7 +161,7 @@ def plot_relationships(data, aggregate=False, nbins=40, min_count=40):
                  n=('hospitaldeath', 'size'))
             .reset_index()
     )
-    tmp = tmp[tmp['n'] >= min_count]  # stabilize sparse tails
+    tmp = tmp[tmp['n'] >= min_count]
     
     curve = (
         tmp.groupby('_bin')
@@ -182,13 +180,13 @@ def plot_relationships(data, aggregate=False, nbins=40, min_count=40):
     plt.show()
 
 
-    # 3) Stage vs Death — same barplot + error bars
+    # 3) Stage vs Death 
     stage_order = ['I', 'II', 'III', 'IV']
     stage = (data.groupby(['_run', 'stage'])['hospitaldeath'].mean().reset_index())
     
     # mean and standard deviation across runs per stage
     stage_agg = (stage.groupby('stage')['hospitaldeath']
-                      .agg(mean='mean', sd='std')   # <- SD instead of percentiles
+                      .agg(mean='mean', sd='std')
                       .reset_index())
     
     stage_agg['stage'] = pd.Categorical(stage_agg['stage'],
@@ -199,14 +197,14 @@ def plot_relationships(data, aggregate=False, nbins=40, min_count=40):
     ax = sns.barplot(x='stage', y='mean', data=stage_agg, order=stage_order,
                      hue='stage', legend=False)
     ax.errorbar(x=np.arange(len(stage_agg)), y=stage_agg['mean'],
-                yerr=stage_agg['sd'].values,          # <- mean ± 1 SD
+                yerr=stage_agg['sd'].values,          # mean ± 1 SD
                 fmt='none', capsize=6, linewidth=1.5, color='black')
     ax.set_ylim(0, 1)
     ax.set_title("Mortality Rate by Stage (mean ± 1 SD)")
     ax.set_xlabel('stage'); ax.set_ylabel('Rate')
     plt.show()
 
-    # 4) Therapy vs Death — same barplot + error bars
+    # 4) Therapy vs Death 
     therapy = (data.groupby(['_run', 'therapy'])['hospitaldeath'].mean().reset_index())
     
     # mean and SD across runs per therapy group
@@ -214,7 +212,6 @@ def plot_relationships(data, aggregate=False, nbins=40, min_count=40):
                         .agg(mean='mean', sd='std')
                         .reset_index())
     
-    # keep order False -> True (and seaborn default colors)
     therapy_agg['therapy'] = pd.Categorical(therapy_agg['therapy'],
                                             categories=[False, True], ordered=True)
     therapy_agg = therapy_agg.sort_values('therapy')
@@ -245,7 +242,6 @@ if seperability_check is True:
     
     stage_order = {'I': 1, 'II': 2, 'III': 3, 'IV': 4}
     train_data['stage'] = pd.Categorical(train_data['stage'], categories=stage_order.keys(), ordered=True)
-    # If you need the numeric version (e.g., for multiplication), extract codes + 1
     train_data['stage_num'] = train_data['stage'].cat.codes + 1
     
     from sklearn.preprocessing import StandardScaler
@@ -261,7 +257,7 @@ if seperability_check is True:
     X_scaled = scaler.fit_transform(X)
     
     # Model fit
-    model = LogisticRegression(max_iter=1000, random_state=123)  # 'liblinear' is stabieler bij kleine datasets
+    model = LogisticRegression(max_iter=1000, random_state=123)  
     model.fit(X_scaled, y)
     
     # Coëfficiënts

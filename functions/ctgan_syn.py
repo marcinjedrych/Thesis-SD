@@ -24,7 +24,7 @@ def generate_synthetic_data(df):
         table_name='my_table'
     )
 
-    synthesizer = CTGANSynthesizer(metadata=metadata, epochs=500)
+    synthesizer = CTGANSynthesizer(metadata=metadata, epochs=400)
     synthesizer.fit(data=df)
 
     # Get and plot losses
